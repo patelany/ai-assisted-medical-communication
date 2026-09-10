@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "",
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
         debrief_reaction: debrief?.debriefReaction || null,
       });
 
-      if (error) {
+            if (error) {
         console.error("Supabase insert error:", error);
         return NextResponse.json(
-          { error: "Failed to save response" },
+          { error: "Failed to save response", details: error.message },
           { status: 500 }
         );
       }

@@ -520,18 +520,18 @@ export default function StudyFlow() {
   // ── SCENARIO ──
   if (step === "scenario") {
     const scenario = scenarioOrder[currentScenarioIndex];
-    const progress = currentScenarioIndex + 1;
+    const progress = currentScenarioIndex;
 
     return (
       <div className="max-w-2xl mx-auto py-8 px-4 md:px-6">
         {/* PROGRESS */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-mono text-gray-400 uppercase tracking-widest">
-              Scenario {progress} of {scenarioOrder.length}
+              Scenario {currentScenarioIndex + 1} of {scenarioOrder.length}
             </div>
             <div className="text-xs font-mono text-gray-400">
-              {Math.round((progress / scenarioOrder.length) * 100)}% complete
+              {Math.round((currentScenarioIndex / scenarioOrder.length) * 100)}% complete
             </div>
           </div>
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
