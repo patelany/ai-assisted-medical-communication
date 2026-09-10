@@ -23,7 +23,6 @@ export default function Home() {
   const [accessCode, setAccessCode] = useState("");
   const [history, setHistory] = useState<any[]>([]);
   const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
-  const [participantCount, setParticipantCount] = useState(1);
   const [patientLoaded, setPatientLoaded] = useState(false);
   const [currentPatientName, setCurrentPatientName] = useState("");
 
@@ -86,16 +85,6 @@ export default function Home() {
     setPatientLoaded(false);
     setCurrentPatientName("");
     setMessages(null);
-  };
-
-  const handleStartNextParticipant = () => {
-    const newCode = generateCode();
-    localStorage.setItem("clarityai_access_code", newCode);
-    setAccessCode(newCode);
-    setMessages(null);
-    setDashboardUnlocked(false);
-    setParticipantCount((prev) => prev + 1);
-    setTab("compose");
   };
 
   const handleTabClick = (key: string) => {
@@ -171,7 +160,6 @@ export default function Home() {
             {patientLoaded && (
               <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
 
-                {/* NO UPDATES YET */}
                 {!messages && !loading && (
                   <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-stone-400">
                     <div className="text-5xl opacity-40">📋</div>
@@ -185,7 +173,6 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* LOADING */}
                 {loading && (
                   <div className="flex flex-col items-center justify-center min-h-96 gap-5">
                     <div className="w-9 h-9 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
@@ -195,11 +182,9 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* MESSAGES */}
                 {messages && !loading && (
                   <div className="max-w-2xl mx-auto flex flex-col gap-4">
 
-                    {/* HIPAA REPORT */}
                     {messages.hipaa?.length > 0 ? (
                       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                         <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
@@ -220,7 +205,6 @@ export default function Home() {
                       </div>
                     )}
 
-                    {/* HYBRID MESSAGE CARD */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                         <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
@@ -237,7 +221,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* NEW UPDATE BUTTON */}
                     <button
                       onClick={() => setMessages(null)}
                       className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
@@ -268,14 +251,6 @@ export default function Home() {
               />
             ) : (
               <div className="flex flex-col gap-6 max-w-4xl mx-auto">
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleStartNextParticipant}
-                    className="bg-stone-900 text-white rounded-lg px-4 md:px-5 py-2.5 text-xs font-mono tracking-wide hover:bg-stone-700 transition-all flex items-center gap-2"
-                  >
-                    Start Next Participant →
-                  </button>
-                </div>
                 <Dashboard />
               </div>
             )}
