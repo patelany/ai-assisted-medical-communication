@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "6_8GhtXTmwOJ4BQwSGnwMK-Ko5YuFth14n0QoagdrVejFqgcyZaDrrVkcnj0SooeKEdfod675Ho8_hkptI5QAcv27D91oJe_x3UMEqRMOCW7mLSfvr_jm9xKY4-IxogkA_q5MUVtJExDWeCGm_0gHBWz7fzRL0sNMx04ZHQwAMwRtP3PdkTVl_D38hNtBgkjOSUmETPtfGKqlR4J2Q-CU0UVN3R0RQTKGGX_dAFxKESpAwKN8FmGj2t2JgtrzBJO2TCAtjP4NM9MFfQd5FY7Vtbv_LWQP_XBm8LEdw8hNrF7q6XhQFZttA7fK5_KOncyRvAZVtYAV-pdvmu1Q4i6Rw",
+      "e": "AQAB",
+      "use": "sig",
+      "alg": "RS384",
+      "kid": "clarityai-key-prod-1"
+    }
+  ]
+}

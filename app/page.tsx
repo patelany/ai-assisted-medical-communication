@@ -126,9 +126,6 @@ export default function Home() {
               Patient: {currentPatientName}
             </span>
           )}
-          <span className="font-mono text-xs text-stone-500 tracking-widest uppercase hidden sm:block">
-            P{participantCount}
-          </span>
           {dashboardUnlocked && (
             <span className="font-mono text-xs text-emerald-500 tracking-widest uppercase hidden sm:flex items-center gap-1">
               🔓
