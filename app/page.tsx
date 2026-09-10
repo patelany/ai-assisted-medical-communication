@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import DoctorPanel from "@/components/DoctorPanel";
-import MessageCards from "@/components/MessageCards";
 import FamilyViewer from "@/components/FamilyViewer";
 import Dashboard from "@/components/Dashboard";
 import ResearcherAuth from "@/components/ResearcherAuth";
@@ -22,7 +21,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<any>(null);
   const [accessCode, setAccessCode] = useState("");
-  const [responses, setResponses] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
   const [participantCount, setParticipantCount] = useState(1);
@@ -58,7 +56,7 @@ export default function Home() {
           minute: "2-digit",
         }),
         status: formData.status,
-        msg: data.context,
+        msg: data.hybrid,
         raw: data.raw,
       };
 
@@ -74,27 +72,6 @@ export default function Home() {
     }
 
     setLoading(false);
-  };
-
-  const handleSubmitRatings = (
-    ratings: any,
-    notes: any,
-    participantId: string,
-    participantType: string
-  ) => {
-    setResponses((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        ratings,
-        notes,
-        participantId,
-        participantType,
-        action: "Scenario",
-        status: "stable",
-      },
-    ]);
-    setTab("dashboard");
   };
 
   const handleStartNextParticipant = () => {
@@ -182,9 +159,9 @@ export default function Home() {
                   </div>
                   <div className="text-sm text-center max-w-xs leading-relaxed">
                     Fill in the clinical input and click Generate. AI will
-                    de-identify the content and produce three message versions.
+                    de-identify the content and send a plain-language update
+                    to the family viewer.
                   </div>
-                  {/* Mobile hint */}
                   <div className="md:hidden bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-500 text-center max-w-xs">
                     Tap the <span className="font-bold">📋</span> button in the
                     bottom left to open the clinical input form.
@@ -202,11 +179,56 @@ export default function Home() {
               )}
 
               {messages && !loading && (
-                <div className="max-w-2xl mx-auto">
-                  <MessageCards
-                    messages={messages}
-                    onSubmitRatings={handleSubmitRatings}
-                  />
+                <div className="max-w-2xl mx-auto flex flex-col gap-4">
+
+                  {/* HIPAA REPORT */}
+                  {messages.hipaa?.length > 0 ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
+                        🔒 HIPAA De-identification Report
+                      </div>
+                      {messages.hipaa.map((h: any, i: number) => (
+                        <div key={i} className="flex flex-wrap items-center gap-2 mb-2 text-xs">
+                          <span className="text-gray-400 w-20 flex-shrink-0">{h.type}</span>
+                          <span className="line-through text-red-500 font-mono">{h.original}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="bg-white text-blue-700 font-mono px-2 py-0.5 rounded">{h.replacement}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex gap-2">
+                      ✓ <strong>No PHI detected</strong> — input appears safe to transmit.
+                    </div>
+                  )}
+
+                  {/* HYBRID MESSAGE CARD */}
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
+                          Update Sent to Family
+                        </span>
+                      </div>
+                      <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                        ✓ Delivered to family viewer
+                      </span>
+                    </div>
+                    <div className="p-5">
+                      <p className="text-sm leading-relaxed text-gray-800">
+                        {messages.hybrid}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* NEW SCENARIO BUTTON */}
+                  <button
+                    onClick={() => setMessages(null)}
+                    className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
+                  >
+                    + Generate New Update
+                  </button>
+
                 </div>
               )}
             </main>
@@ -237,7 +259,7 @@ export default function Home() {
                     Start Next Participant →
                   </button>
                 </div>
-                <Dashboard responses={responses} />
+                <Dashboard />
               </div>
             )}
           </main>

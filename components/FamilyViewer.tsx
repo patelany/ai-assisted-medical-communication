@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import React from "react";
 import FamilyChat from "@/components/FamilyChat";
 
 interface Update {
@@ -23,37 +24,74 @@ const STATUS_CLASS: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
 };
 
-function ClipboardDetails({ raw }: { raw: string }) {
-  return (
-    <div className="mt-4 relative">
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-10 h-5 bg-gray-300 rounded-b-md border border-gray-400 z-10 flex items-center justify-center">
-        <div className="w-5 h-3 bg-gray-400 rounded-sm" />
-      </div>
-      <div
-        className="bg-amber-50 border border-amber-200 rounded-lg pt-6 pb-4 px-4"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(transparent, transparent 24px, #e5e7eb 24px, #e5e7eb 25px)",
-          backgroundPositionY: "32px",
-        }}
+function highlightClinicalValues(text: string) {
+  // Highlight patterns like "INR 2.8", "WBC 8.2", "SpO2 94%", etc.
+  const pattern = /\b([A-Z]{2,6})\s+([\d.]+\s*%?)\b/g;
+  const parts: (string | React.ReactElement)[] = [];
+  let last = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(text.slice(last, match.index));
+    }
+    parts.push(
+      <span
+        key={match.index}
+        className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-1.5 py-0.5 text-xs font-mono font-semibold mx-0.5"
       >
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-bold uppercase tracking-widest text-amber-700 font-mono">
-            📋 Clinical Details
-          </span>
-          <span className="text-xs text-gray-400 font-mono">
-            — For medical reference only
+        {match[0]}
+      </span>
+    );
+    last = match.index + match[0].length;
+  }
+
+  if (last < text.length) {
+    parts.push(text.slice(last));
+  }
+
+  return parts.length > 1 ? parts : text;
+}
+
+function ClinicalDetails({ raw }: { raw: string }) {
+  const highlighted = highlightClinicalValues(raw);
+
+  return (
+    <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+      {/* Header */}
+      <div className="bg-slate-800 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-400" />
+          <span className="text-xs font-semibold text-white tracking-wide">
+            Clinical Reference
           </span>
         </div>
-        <p className="font-mono text-xs text-gray-600 leading-relaxed bg-transparent">
-          {raw}
+        <span className="text-xs text-slate-400 font-mono">
+          For medical professionals
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="bg-slate-900 px-4 py-4">
+        <p className="text-sm text-slate-200 leading-relaxed">
+          {Array.isArray(highlighted)
+            ? highlighted.map((part, i) =>
+                typeof part === "string" ? (
+                  <span key={i}>{part}</span>
+                ) : (
+                  part
+                )
+              )
+            : highlighted}
         </p>
-        <div className="mt-3 pt-3 border-t border-amber-200">
-          <p className="text-xs text-amber-600 italic">
-            This clinical information is provided for reference. Please consult
-            directly with the care team for medical advice.
-          </p>
-        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-slate-800 px-4 py-2 flex items-center gap-2">
+        <span className="text-xs text-slate-500">
+          ⚕️ Clinical data provided for reference only. Contact the care team
+          for medical guidance.
+        </span>
       </div>
     </div>
   );
@@ -112,7 +150,9 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
       setUnlocked(true);
       setError("");
     } else {
-      setError("Code not recognized or no updates available yet. Check your code and try again.");
+      setError(
+        "Code not recognized or no updates available yet. Check your code and try again."
+      );
     }
   };
 
@@ -147,13 +187,22 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   const latestUpdate = updates.length > 0 ? updates[0].msg : "";
 
   const termsLink = (
-    <a href="/terms.html" target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+    <a
+      href="/terms.html"
+      target="_blank"
+      rel="noreferrer"
+      className="text-emerald-700 underline">
+    
       Terms
     </a>
   );
 
   const privacyLink = (
-    <a href="/privacy.html" target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+    <a
+      href="/privacy.html"
+      target="_blank"
+      rel="noreferrer"
+      className="text-emerald-700 underline">
       Privacy Policy
     </a>
   );
@@ -275,12 +324,12 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   }
 
   return (
-    <div className="max-w-xl mx-auto py-10 px-6">
+    <div className="max-w-xl mx-auto py-10 px-4 md:px-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-serif mb-1">Live Updates</h1>
           <p className="text-xs text-gray-400">
-            AI-simplified updates from the care team
+            Updates from the care team
           </p>
         </div>
         <button
@@ -314,14 +363,20 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           {updates.map((u, i) => (
             <div
               key={i}
-              className="bg-white border border-gray-200 rounded-xl p-5"
+              className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
             >
-              <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mb-2">
-                🕐 {u.time} today
+              {/* UPDATE HEADER */}
+              <div className="px-5 pt-4 pb-3">
+                <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mb-3">
+                  🕐 {u.time} today
+                </div>
+                <p className="text-sm leading-relaxed text-gray-800">
+                  {u.msg}
+                </p>
               </div>
-              <p className="text-sm leading-relaxed text-gray-800">{u.msg}</p>
 
-              <div className="flex items-center justify-between mt-3">
+              {/* STATUS + CLINICAL TOGGLE */}
+              <div className="px-5 pb-4 flex items-center justify-between">
                 <div
                   className={`inline-flex items-center text-xs font-bold tracking-widest uppercase px-2 py-1 rounded ${
                     STATUS_CLASS[u.status] || STATUS_CLASS.stable
@@ -335,24 +390,27 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
                     onClick={() =>
                       setExpandedIndex(expandedIndex === i ? null : i)
                     }
-                    className={`flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
                       expandedIndex === i
-                        ? "bg-amber-50 border-amber-300 text-amber-700"
-                        : "border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600"
+                        ? "bg-slate-800 border-slate-700 text-white"
+                        : "border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700"
                     }`}
                   >
-                    <span>📋</span>
+                    <span>⚕️</span>
                     <span>
                       {expandedIndex === i
-                        ? "Hide Clinical Details"
-                        : "View Clinical Details"}
+                        ? "Hide Clinical Data"
+                        : "View Clinical Data"}
                     </span>
                   </button>
                 )}
               </div>
 
+              {/* CLINICAL DETAILS PANEL */}
               {expandedIndex === i && u.raw && (
-                <ClipboardDetails raw={u.raw} />
+                <div className="px-4 pb-4">
+                  <ClinicalDetails raw={u.raw} />
+                </div>
               )}
             </div>
           ))}
