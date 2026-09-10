@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@aws-sdk/client-comprehendmedical": "^3.1124.0",
+    "@supabase/supabase-js": "^2.116.0",
     "ai": "^7.0.48",
     "next": "16.2.12",
     "react": "19.2.4",

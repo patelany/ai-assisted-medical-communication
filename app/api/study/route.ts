@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
-const STUDY_DB_PATH = path.join(process.cwd(), ".study-responses.json");
-
-function readResponses(): any[] {
-  try {
-    if (fs.existsSync(STUDY_DB_PATH)) {
-      const data = fs.readFileSync(STUDY_DB_PATH, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error("Error reading study responses:", e);
-  }
-  return [];
-}
-
-function writeResponses(responses: any[]) {
-  try {
-    fs.writeFileSync(STUDY_DB_PATH, JSON.stringify(responses, null, 2));
-  } catch (e) {
-    console.error("Error writing study responses:", e);
-  }
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,16 +18,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = readResponses();
+    // Extract scenario responses and debrief separately
+    const scenarioResponses = responses.filter((r: any) => r.scenarioId);
+    const debrief = responses.find((r: any) => r.debriefReaction !== undefined);
 
-    existing.push({
-      participantId,
-      demographics,
-      responses,
-      submittedAt: new Date().toISOString(),
-    });
+    // Insert one row per scenario per participant
+    for (const scenario of scenarioResponses) {
+      const { ratings, scenarioId, messageOrder } = scenario;
 
-    writeResponses(existing);
+      const { error } = await supabase.from("study_responses").insert({
+        participant_id: participantId,
+        age_range: demographics.ageRange,
+        medical_background: demographics.medicalBackground,
+        prior_hospitalization: demographics.priorHospitalization,
+        scenario_id: scenarioId,
+        message_order: messageOrder,
+        raw_understanding: ratings.raw?.understanding || null,
+        raw_anxiety: ratings.raw?.anxiety || null,
+        raw_notes: ratings.raw?.notes || null,
+        hybrid_understanding: ratings.hybrid?.understanding || null,
+        hybrid_anxiety: ratings.hybrid?.anxiety || null,
+        hybrid_notes: ratings.hybrid?.notes || null,
+        context_understanding: ratings.context?.understanding || null,
+        context_anxiety: ratings.context?.anxiety || null,
+        context_notes: ratings.context?.notes || null,
+        debrief_reaction: debrief?.debriefReaction || null,
+      });
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        return NextResponse.json(
+          { error: "Failed to save response" },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -59,8 +66,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const responses = readResponses();
-    return NextResponse.json({ responses });
+    const { data, error } = await supabase
+      .from("study_responses")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to read responses" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ responses: data });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to read responses" },
