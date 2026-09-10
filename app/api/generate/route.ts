@@ -31,9 +31,23 @@ async function deidentifyWithComprehend(text: string): Promise<{
 
     let cleanText = text;
 
+        // Medical terms that should never be redacted
+    const MEDICAL_WHITELIST = new Set([
+      "ICU", "ER", "OR", "ED", "CCU", "NICU", "PICU", "MICU",
+      "IV", "BP", "HR", "SpO2", "O2", "CO2", "INR", "WBC",
+      "RBC", "CBC", "EKG", "ECG", "MRI", "CT", "PET", "NPO",
+      "PRN", "DNR", "DNI", "CPR", "AED", "EEG", "EMG",
+    ]);
+
     for (const entity of sorted) {
       const original = entity.Text || "";
       const type = entity.Type || "PHI";
+
+      // Skip whitelisted medical abbreviations
+      if (MEDICAL_WHITELIST.has(original.toUpperCase().trim())) {
+        continue;
+      }
+
       const replacement = `[${type.toLowerCase().replace(/_/g, " ")}]`;
 
       cleanText =
