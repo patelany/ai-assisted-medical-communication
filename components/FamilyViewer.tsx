@@ -66,6 +66,12 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   const [error, setError] = useState("");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsError, setSmsError] = useState("");
+
   useEffect(() => {
     if (!unlocked) return;
 
@@ -89,13 +95,38 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
     }
   };
 
-  // Most recent update text for the chat assistant context
+  const handleRequestCode = async () => {
+    if (!phoneNumber.trim() || !smsConsent) return;
+    setSmsSending(true);
+    setSmsError("");
+
+    try {
+      const res = await fetch("/api/sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, accessCode: correctCode }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSmsSent(true);
+      } else {
+        setSmsError(data.error || "Failed to send. Try again.");
+      }
+    } catch (e) {
+      setSmsError("Network error. Check your connection.");
+    }
+
+    setSmsSending(false);
+  };
+
   const latestUpdate = updates.length > 0 ? updates[0].msg : "";
 
   if (!unlocked) {
     return (
       <div className="max-w-md mx-auto py-16 px-6">
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="text-5xl mb-4">💙</div>
           <h1 className="text-2xl font-serif mb-2">Patient Update Feed</h1>
           <p className="text-sm text-gray-500">
@@ -104,7 +135,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-2">
           <input
             maxLength={6}
             value={code}
@@ -121,14 +152,101 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         </div>
 
         {error && (
-          <p className="text-red-500 text-xs text-center mt-3">{error}</p>
+          <p className="text-red-500 text-xs text-center mt-2 mb-4">{error}</p>
         )}
 
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
-          <p className="text-xs text-amber-700">
-            💡 <strong>Demo:</strong> Ask the care team for your 6-digit access
-            code
+        <div className="flex items-center gap-3 my-6">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400 font-mono">or</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div className="text-sm font-semibold text-gray-800 mb-1">
+            Get your access code via text
+          </div>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            Don&apos;t have your code yet? Enter your phone number and we&apos;ll
+            text it to you. You&apos;ll receive one message with your code.
           </p>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                Phone Number
+              </div>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value);
+                  setSmsSent(false);
+                  setSmsError("");
+                }}
+                placeholder="(555) 000-0000"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={(e) => setSmsConsent(e.target.checked)}
+                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-emerald-700"
+              />
+              <span className="text-xs text-gray-500 leading-relaxed">
+                I agree to receive a one-time SMS access code from ClarityAI.
+                Message frequency: 1 message per request. Msg &amp; data rates
+                may apply. Reply STOP to cancel, HELP for help. View our{" "}
+                
+                  href="/terms.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-emerald-700 underline"
+                <a>
+                  Terms
+                </a>{" "}
+                and{" "}
+                
+                  href="/privacy.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-emerald-700 underline"
+                <a>
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+
+            <button
+              onClick={handleRequestCode}
+              disabled={smsSending || !phoneNumber.trim() || !smsConsent || smsSent}
+              className="w-full bg-emerald-700 text-white rounded-xl p-3 text-sm font-semibold hover:bg-emerald-800 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {smsSending
+                ? "Sending..."
+                : smsSent
+                ? "✓ Code sent — check your phone"
+                : "Send me my access code"}
+            </button>
+
+            {smsError && (
+              <p className="text-xs text-red-500">⚠️ {smsError}</p>
+            )}
+
+            {smsSent && (
+              <p className="text-xs text-emerald-600 leading-relaxed">
+                ✓ Your access code has been sent. Enter it in the field above
+                to view updates.
+              </p>
+            )}
+
+            <p className="text-xs text-gray-300 text-center">
+              Your number will never be shared or used for marketing.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -163,8 +281,8 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
             No updates yet
           </p>
           <p className="text-xs max-w-xs mx-auto leading-relaxed">
-            The care team hasn't posted an update yet. This page refreshes
-            automatically every 10 seconds — you don't need to do anything.
+            The care team hasn&apos;t posted an update yet. This page refreshes
+            automatically every 10 seconds — you don&apos;t need to do anything.
           </p>
         </div>
       ) : (
@@ -217,7 +335,6 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         </div>
       )}
 
-      {/* FAMILY CHAT ASSISTANT — shown whenever viewer is unlocked */}
       {unlocked && (
         <FamilyChat currentUpdate={latestUpdate} />
       )}
