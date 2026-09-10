@@ -9,7 +9,7 @@ const SCENARIOS = [
     id: "A",
     status: "delayed",
     action: "Postpone laparoscopic surgery",
-    change: "Surgery postponed until further notice",
+    change: "Surgery postponed pending coagulation normalization",
     reason: "INR levels elevated at 2.8, coagulation needs to normalize before proceeding safely",
   },
   {
