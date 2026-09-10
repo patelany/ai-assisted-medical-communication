@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import EpicPatientSearch from "@/components/EpicPatientSearch";
 
 const STATUS_OPTIONS = [
   { value: "stable", label: "Stable", icon: "🟢" },
@@ -28,16 +29,23 @@ export default function DoctorPanel({
   const [action, setAction] = useState("");
   const [change, setChange] = useState("");
   const [reason, setReason] = useState("");
+  const [noChange, setNoChange] = useState(false);
+  const [noReason, setNoReason] = useState(false);
   const [copied, setCopied] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [smsSent, setSmsSent] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
   const [smsError, setSmsError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
-  const [noChange, setNoChange] = useState(false);
-  const [noReason, setNoReason] = useState(false);
+  const [patientName, setPatientName] = useState("");
+  const [emergencyContact, setEmergencyContact] = useState<{
+    name: string;
+    phone: string;
+  } | null>(null);
+  const [epicDataLoaded, setEpicDataLoaded] = useState(false);
+  const [showEpicSearch, setShowEpicSearch] = useState(false);
 
-    const handleSubmit = () => {
+  const handleSubmit = () => {
     if (!action.trim()) return;
     onGenerate({ status, action, change, reason });
     setStatus("stable");
@@ -83,6 +91,23 @@ export default function DoctorPanel({
     setSmsSending(false);
   };
 
+  const handlePatientSelected = (patient: any) => {
+    setPatientName(patient.patientName || "");
+    setStatus(patient.suggestedStatus || "stable");
+    setAction(patient.suggestedAction || "");
+    setReason(patient.suggestedReason || "");
+    setChange("");
+    setNoChange(false);
+    setNoReason(false);
+    setEpicDataLoaded(true);
+    setShowEpicSearch(false);
+
+    if (patient.emergencyContact) {
+      setEmergencyContact(patient.emergencyContact);
+      setPhoneNumber(patient.emergencyContact.phone || "");
+    }
+  };
+
   return (
     <>
       {/* MOBILE TOGGLE BUTTON */}
@@ -104,7 +129,7 @@ export default function DoctorPanel({
           lg:w-80 lg:min-w-80 lg:p-6
         `}
       >
-        {/* MOBILE CLOSE BUTTON */}
+        {/* MOBILE CLOSE */}
         <div className="flex items-center justify-between md:hidden">
           <div className="text-xs font-mono tracking-widest text-gray-400 uppercase">
             Clinical Input
@@ -122,6 +147,59 @@ export default function DoctorPanel({
           Clinical Input
         </div>
 
+        {/* EPIC INTEGRATION */}
+        <div>
+          <button
+            onClick={() => setShowEpicSearch(!showEpicSearch)}
+            className={`w-full flex items-center justify-between border rounded-lg p-3 text-xs font-semibold transition-all ${
+              epicDataLoaded
+                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                : "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-400"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>⚕️</span>
+              {epicDataLoaded
+                ? `Epic: ${patientName}`
+                : "Pull from Epic EHR"}
+            </span>
+            <span>{showEpicSearch ? "▲" : "▼"}</span>
+          </button>
+
+          {showEpicSearch && (
+            <div className="mt-3">
+              <EpicPatientSearch onPatientSelected={handlePatientSelected} />
+            </div>
+          )}
+
+          {epicDataLoaded && (
+            <button
+              onClick={() => {
+                setShowEpicSearch(true);
+                setEpicDataLoaded(false);
+                setPatientName("");
+                setEmergencyContact(null);
+              }}
+              className="mt-2 text-xs text-gray-400 hover:text-gray-600 transition-all"
+            >
+              Switch patient →
+            </button>
+          )}
+        </div>
+
+        {/* EMERGENCY CONTACT BANNER */}
+        {emergencyContact && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs">
+            <div className="font-bold text-amber-700 mb-1">
+              📞 Emergency Contact (from Epic)
+            </div>
+            <div className="text-amber-600">
+              {emergencyContact.name} — {emergencyContact.phone}
+            </div>
+          </div>
+        )}
+
+        {/* STATUS */}
         <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Patient Status
@@ -144,6 +222,7 @@ export default function DoctorPanel({
           </div>
         </div>
 
+        {/* PLANNED ACTION */}
         <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Planned Action
@@ -156,7 +235,8 @@ export default function DoctorPanel({
           />
         </div>
 
-                <div>
+        {/* CHANGE IN PLAN */}
+        <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Change in Plan
           </div>
@@ -183,7 +263,8 @@ export default function DoctorPanel({
           </label>
         </div>
 
-                <div>
+        {/* CLINICAL REASON */}
+        <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Clinical Reason
           </div>
@@ -210,6 +291,7 @@ export default function DoctorPanel({
           </label>
         </div>
 
+        {/* HIPAA NOTE */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex gap-2">
           <span className="flex-shrink-0">🔒</span>
           <span>
@@ -218,6 +300,7 @@ export default function DoctorPanel({
           </span>
         </div>
 
+        {/* GENERATE BUTTON */}
         <button
           onClick={() => {
             handleSubmit();
@@ -229,6 +312,7 @@ export default function DoctorPanel({
           {loading ? "Processing..." : "⚡ Generate & De-identify"}
         </button>
 
+        {/* ACCESS CODE */}
         <div className="border-t border-gray-200 pt-4">
           <div className="text-xs font-mono tracking-widest text-gray-400 uppercase mb-3">
             Family Access Code
@@ -244,6 +328,12 @@ export default function DoctorPanel({
               ai-assisted-medical-communication.vercel.app/
               <span className="text-emerald-600">view</span>
             </div>
+
+            {emergencyContact && (
+              <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-xs text-emerald-700">
+                📞 Auto-filled from Epic: {emergencyContact.name}
+              </div>
+            )}
 
             <div className="mt-4 flex flex-col gap-2">
               <div className="text-xs font-bold uppercase tracking-wide text-gray-400 text-left">
@@ -278,11 +368,11 @@ export default function DoctorPanel({
 
               {smsSent && (
                 <div className="text-xs text-emerald-600 text-left">
-                  ✓ Code sent successfully. Family member will receive a text shortly.
+                  ✓ Code sent successfully.
                 </div>
               )}
 
-              <div className="text-xs text-gray-300 text-left leading-relaxed">
+              <div className="text-xs text-gray-300 text-left">
                 Or copy manually:
               </div>
             </div>
