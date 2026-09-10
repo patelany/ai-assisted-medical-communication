@@ -81,7 +81,7 @@ export default function DoctorPanel({
 
   return (
     <>
-      {/* MOBILE/TABLET TOGGLE BUTTON */}
+      {/* MOBILE TOGGLE BUTTON */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="lg:hidden fixed bottom-6 left-6 z-50 bg-stone-900 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-lg"
@@ -94,19 +94,13 @@ export default function DoctorPanel({
         className={`
           bg-white border-r border-gray-200 flex flex-col gap-4 overflow-y-auto
           transition-all duration-300
-          
-          /* Mobile — full screen overlay when open */
           fixed inset-0 z-40 p-6
           ${collapsed ? "-translate-x-full" : "translate-x-0"}
-          
-          /* Tablet — fixed width sidebar, always visible */
           md:relative md:inset-auto md:translate-x-0 md:w-72 md:min-w-72 md:z-auto md:p-5
-          
-          /* Desktop — wider sidebar */
           lg:w-80 lg:min-w-80 lg:p-6
         `}
       >
-        {/* MOBILE CLOSE BUTTON inside panel */}
+        {/* MOBILE CLOSE BUTTON */}
         <div className="flex items-center justify-between md:hidden">
           <div className="text-xs font-mono tracking-widest text-gray-400 uppercase">
             Clinical Input
@@ -195,25 +189,11 @@ export default function DoctorPanel({
             handleSubmit();
             setCollapsed(true);
           }}
-          disabled={loading || !action.trim() || hasMessages}
+          disabled={loading || !action.trim()}
           className="bg-emerald-700 text-white rounded-lg p-3 text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-emerald-800 transition-all"
         >
-          {loading
-            ? "Processing..."
-            : hasMessages
-            ? "✓ Generated — Rate Cards Below"
-            : "⚡ Generate & De-identify"}
+          {loading ? "Processing..." : "⚡ Generate & De-identify"}
         </button>
-
-        {hasMessages && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 flex gap-2">
-            <span className="flex-shrink-0">💡</span>
-            <span>
-              Rate all three cards and submit before generating the next
-              scenario.
-            </span>
-          </div>
-        )}
 
         <div className="border-t border-gray-200 pt-4">
           <div className="text-xs font-mono tracking-widest text-gray-400 uppercase mb-3">
@@ -264,8 +244,7 @@ export default function DoctorPanel({
 
               {smsSent && (
                 <div className="text-xs text-emerald-600 text-left">
-                  ✓ Code sent successfully. Family member will receive a text
-                  shortly.
+                  ✓ Code sent successfully. Family member will receive a text shortly.
                 </div>
               )}
 
@@ -284,7 +263,7 @@ export default function DoctorPanel({
         </div>
       </div>
 
-      {/* MOBILE OVERLAY BACKDROP */}
+      {/* MOBILE BACKDROP */}
       {!collapsed && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-40 z-30"
