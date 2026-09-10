@@ -61,6 +61,7 @@ function ClipboardDetails({ raw }: { raw: string }) {
 
 export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   const [code, setCode] = useState("");
+  const [enteredCode, setEnteredCode] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [error, setError] = useState("");
@@ -75,8 +76,10 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   useEffect(() => {
     if (!unlocked) return;
 
+    const activeCode = correctCode || enteredCode;
+
     const fetchUpdates = async () => {
-      const res = await fetch(`/api/viewer?code=${correctCode}`);
+      const res = await fetch(`/api/viewer?code=${activeCode}`);
       const data = await res.json();
       setUpdates(data.updates);
     };
@@ -84,14 +87,32 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
     fetchUpdates();
     const interval = setInterval(fetchUpdates, 10000);
     return () => clearInterval(interval);
-  }, [unlocked, correctCode]);
+  }, [unlocked, correctCode, enteredCode]);
 
-  const handleUnlock = () => {
-    if (code.trim() === correctCode) {
+  const handleUnlock = async () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+
+    if (correctCode) {
+      if (trimmed === correctCode) {
+        setEnteredCode(trimmed);
+        setUnlocked(true);
+        setError("");
+      } else {
+        setError("Code not recognized. Check the code and try again.");
+      }
+      return;
+    }
+
+    const res = await fetch(`/api/viewer?code=${trimmed}`);
+    const data = await res.json();
+
+    if (data.updates && data.updates.length > 0) {
+      setEnteredCode(trimmed);
       setUnlocked(true);
       setError("");
     } else {
-      setError("Code not recognized. Check the code and try again.");
+      setError("Code not recognized or no updates available yet. Check your code and try again.");
     }
   };
 
@@ -100,11 +121,13 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
     setSmsSending(true);
     setSmsError("");
 
+    const codeToSend = correctCode || "000000";
+
     try {
       const res = await fetch("/api/sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber, accessCode: correctCode }),
+        body: JSON.stringify({ phoneNumber, accessCode: codeToSend }),
       });
 
       const data = await res.json();
@@ -123,6 +146,18 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
 
   const latestUpdate = updates.length > 0 ? updates[0].msg : "";
 
+  const termsLink = (
+    <a href="/terms.html" target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+      Terms
+    </a>
+  );
+
+  const privacyLink = (
+    <a href="/privacy.html" target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+      Privacy Policy
+    </a>
+  );
+
   if (!unlocked) {
     return (
       <div className="max-w-md mx-auto py-16 px-6">
@@ -130,8 +165,8 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           <div className="text-5xl mb-4">💙</div>
           <h1 className="text-2xl font-serif mb-2">Patient Update Feed</h1>
           <p className="text-sm text-gray-500">
-            Enter the access code shared by the patient's family to view live
-            updates. No account needed.
+            Enter the access code shared by the patient&apos;s family to view
+            live updates. No account needed.
           </p>
         </div>
 
@@ -140,6 +175,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
             placeholder="000000"
             className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-3 text-center font-mono text-2xl tracking-widest focus:outline-none focus:border-emerald-600"
           />
@@ -166,8 +202,9 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
             Get your access code via text
           </div>
           <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-            Don&apos;t have your code yet? Enter your phone number and we&apos;ll
-            text it to you. You&apos;ll receive one message with your code.
+            Don&apos;t have your code yet? Enter your phone number and
+            we&apos;ll text it to you. You&apos;ll receive one message with
+            your code.
           </p>
 
           <div className="flex flex-col gap-3">
@@ -199,30 +236,15 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
                 I agree to receive a one-time SMS access code from ClarityAI.
                 Message frequency: 1 message per request. Msg &amp; data rates
                 may apply. Reply STOP to cancel, HELP for help. View our{" "}
-                
-                  href="/terms.html"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-emerald-700 underline"
-                <a>
-                  Terms
-                </a>{" "}
-                and{" "}
-                
-                  href="/privacy.html"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-emerald-700 underline"
-                <a>
-                  Privacy Policy
-                </a>
-                .
+                {termsLink} and {privacyLink}.
               </span>
             </label>
 
             <button
               onClick={handleRequestCode}
-              disabled={smsSending || !phoneNumber.trim() || !smsConsent || smsSent}
+              disabled={
+                smsSending || !phoneNumber.trim() || !smsConsent || smsSent
+              }
               className="w-full bg-emerald-700 text-white rounded-xl p-3 text-sm font-semibold hover:bg-emerald-800 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {smsSending
@@ -265,6 +287,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           onClick={() => {
             setUnlocked(false);
             setCode("");
+            setEnteredCode("");
             setUpdates([]);
             setExpandedIndex(null);
           }}
@@ -282,7 +305,8 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           </p>
           <p className="text-xs max-w-xs mx-auto leading-relaxed">
             The care team hasn&apos;t posted an update yet. This page refreshes
-            automatically every 10 seconds — you don&apos;t need to do anything.
+            automatically every 10 seconds — you don&apos;t need to do
+            anything.
           </p>
         </div>
       ) : (
@@ -335,9 +359,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         </div>
       )}
 
-      {unlocked && (
-        <FamilyChat currentUpdate={latestUpdate} />
-      )}
+      {unlocked && <FamilyChat currentUpdate={latestUpdate} />}
     </div>
   );
 }
