@@ -205,11 +205,9 @@ export default function Home() {
                   {/* HYBRID MESSAGE CARD */}
                   <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                     <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
-                          Update Sent to Family
-                        </span>
-                      </div>
+                      <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
+                        Update Sent to Family
+                      </span>
                       <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
                         ✓ Delivered to family viewer
                       </span>
@@ -221,7 +219,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* NEW SCENARIO BUTTON */}
+                  {/* NEW UPDATE BUTTON */}
                   <button
                     onClick={() => setMessages(null)}
                     className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
