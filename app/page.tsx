@@ -24,6 +24,8 @@ export default function Home() {
   const [history, setHistory] = useState<any[]>([]);
   const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
   const [participantCount, setParticipantCount] = useState(1);
+  const [patientLoaded, setPatientLoaded] = useState(false);
+  const [currentPatientName, setCurrentPatientName] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("clarityai_access_code");
@@ -74,6 +76,18 @@ export default function Home() {
     setLoading(false);
   };
 
+  const handlePatientLoaded = (name: string) => {
+    setPatientLoaded(true);
+    setCurrentPatientName(name);
+    setMessages(null);
+  };
+
+  const handlePatientCleared = () => {
+    setPatientLoaded(false);
+    setCurrentPatientName("");
+    setMessages(null);
+  };
+
   const handleStartNextParticipant = () => {
     const newCode = generateCode();
     localStorage.setItem("clarityai_access_code", newCode);
@@ -99,14 +113,19 @@ export default function Home() {
       <header className="bg-stone-900 text-white px-4 md:px-9 h-14 flex items-center justify-between flex-shrink-0">
         <div className="flex items-baseline gap-2 md:gap-3 min-w-0">
           <span className="font-serif text-base md:text-xl whitespace-nowrap">
-            AI-Assisted Medical
+            ClarityAI
           </span>
           <span className="font-mono text-xs text-stone-500 tracking-widest uppercase hidden lg:block">
-            Simplification & Family Update Platform
+            Medical Communication Platform
           </span>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+          {patientLoaded && currentPatientName && (
+            <span className="font-mono text-xs text-emerald-400 tracking-wide hidden sm:block">
+              Patient: {currentPatientName}
+            </span>
+          )}
           <span className="font-mono text-xs text-stone-500 tracking-widest uppercase hidden sm:block">
             P{participantCount}
           </span>
@@ -148,88 +167,91 @@ export default function Home() {
               loading={loading}
               accessCode={accessCode}
               hasMessages={!!messages}
+              onPatientLoaded={handlePatientLoaded}
+              onPatientCleared={handlePatientCleared}
             />
 
-            <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
-              {!messages && !loading && (
-                <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-stone-400">
-                  <div className="text-5xl opacity-40">🏥</div>
-                  <div className="text-xl md:text-2xl font-serif text-stone-600">
-                    No update yet
-                  </div>
-                  <div className="text-sm text-center max-w-xs leading-relaxed">
-                    Fill in the clinical input and click Generate. AI will
-                    de-identify the content and send a plain-language update
-                    to the family viewer.
-                  </div>
-                  <div className="md:hidden bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-500 text-center max-w-xs">
-                    Tap the <span className="font-bold">📋</span> button in the
-                    bottom left to open the clinical input form.
-                  </div>
-                </div>
-              )}
+            {patientLoaded && (
+              <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
 
-              {loading && (
-                <div className="flex flex-col items-center justify-center min-h-96 gap-5">
-                  <div className="w-9 h-9 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
-                  <div className="font-mono text-xs text-stone-400 tracking-widest">
-                    De-identifying & transforming…
+                {/* NO UPDATES YET */}
+                {!messages && !loading && (
+                  <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-stone-400">
+                    <div className="text-5xl opacity-40">📋</div>
+                    <div className="text-xl md:text-2xl font-serif text-stone-600">
+                      No updates yet
+                    </div>
+                    <div className="text-sm text-center max-w-xs leading-relaxed">
+                      Fill in the clinical form and click Generate to send a
+                      plain-language update to the family viewer.
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {messages && !loading && (
-                <div className="max-w-2xl mx-auto flex flex-col gap-4">
+                {/* LOADING */}
+                {loading && (
+                  <div className="flex flex-col items-center justify-center min-h-96 gap-5">
+                    <div className="w-9 h-9 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
+                    <div className="font-mono text-xs text-stone-400 tracking-widest">
+                      De-identifying & transforming…
+                    </div>
+                  </div>
+                )}
 
-                  {/* HIPAA REPORT */}
-                  {messages.hipaa?.length > 0 ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
-                        🔒 HIPAA De-identification Report
-                      </div>
-                      {messages.hipaa.map((h: any, i: number) => (
-                        <div key={i} className="flex flex-wrap items-center gap-2 mb-2 text-xs">
-                          <span className="text-gray-400 w-20 flex-shrink-0">{h.type}</span>
-                          <span className="line-through text-red-500 font-mono">{h.original}</span>
-                          <span className="text-gray-400">→</span>
-                          <span className="bg-white text-blue-700 font-mono px-2 py-0.5 rounded">{h.replacement}</span>
+                {/* MESSAGES */}
+                {messages && !loading && (
+                  <div className="max-w-2xl mx-auto flex flex-col gap-4">
+
+                    {/* HIPAA REPORT */}
+                    {messages.hipaa?.length > 0 ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
+                          🔒 HIPAA De-identification Report
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex gap-2">
-                      ✓ <strong>No PHI detected</strong> — input appears safe to transmit.
-                    </div>
-                  )}
+                        {messages.hipaa.map((h: any, i: number) => (
+                          <div key={i} className="flex flex-wrap items-center gap-2 mb-2 text-xs">
+                            <span className="text-gray-400 w-20 flex-shrink-0">{h.type}</span>
+                            <span className="line-through text-red-500 font-mono">{h.original}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="bg-white text-blue-700 font-mono px-2 py-0.5 rounded">{h.replacement}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex gap-2">
+                        ✓ <strong>No PHI detected</strong> — input appears safe to transmit.
+                      </div>
+                    )}
 
-                  {/* HYBRID MESSAGE CARD */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                      <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
-                        Update Sent to Family
-                      </span>
-                      <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                        ✓ Delivered to family viewer
-                      </span>
+                    {/* HYBRID MESSAGE CARD */}
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
+                          Update Sent to Family
+                        </span>
+                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                          ✓ Delivered to family viewer
+                        </span>
+                      </div>
+                      <div className="p-5">
+                        <p className="text-sm leading-relaxed text-gray-800">
+                          {messages.hybrid}
+                        </p>
+                      </div>
                     </div>
-                    <div className="p-5">
-                      <p className="text-sm leading-relaxed text-gray-800">
-                        {messages.hybrid}
-                      </p>
-                    </div>
+
+                    {/* NEW UPDATE BUTTON */}
+                    <button
+                      onClick={() => setMessages(null)}
+                      className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
+                    >
+                      + Generate New Update
+                    </button>
+
                   </div>
-
-                  {/* NEW UPDATE BUTTON */}
-                  <button
-                    onClick={() => setMessages(null)}
-                    className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
-                  >
-                    + Generate New Update
-                  </button>
-
-                </div>
-              )}
-            </main>
+                )}
+              </main>
+            )}
           </>
         )}
 

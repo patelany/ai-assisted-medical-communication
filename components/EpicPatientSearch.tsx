@@ -21,57 +21,66 @@ interface PatientResult {
 }
 
 interface EpicPatientSearchProps {
-  onPatientSelected: (patient: PatientResult) => void;
+  onPatientFound: (patient: PatientResult) => void;
+  onManualEntry: (patientId: string, patientName: string) => void;
 }
 
 export default function EpicPatientSearch({
-  onPatientSelected,
+  onPatientFound,
+  onManualEntry,
 }: EpicPatientSearchProps) {
   const [patientId, setPatientId] = useState("");
+  const [patientName, setPatientName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searched, setSearched] = useState(false);
+  const [epicFailed, setEpicFailed] = useState(false);
 
   const handleSearch = async () => {
     if (!patientId.trim()) return;
     setLoading(true);
     setError("");
-    setSearched(false);
+    setEpicFailed(false);
 
     try {
-      const res = await fetch(`/api/epic/patient?patientId=${patientId.trim()}`);
+      const res = await fetch(
+        `/api/epic/patient?patientId=${patientId.trim()}`
+      );
       const data = await res.json();
 
       if (data.error) {
-        setError("Patient not found. Check the ID and try again.");
+        // Epic failed — show manual entry option
+        setEpicFailed(true);
+        setError(
+          "Could not pull data from Epic. You can enter notes manually below."
+        );
       } else {
-        setSearched(true);
-        onPatientSelected(data);
+        onPatientFound(data);
       }
     } catch (e) {
-      setError("Network error. Check your connection.");
+      setEpicFailed(true);
+      setError(
+        "Network error connecting to Epic. You can enter notes manually below."
+      );
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-blue-700 text-sm font-semibold">
-            ⚕️ Epic Integration
-          </span>
-          <span className="text-xs text-blue-500 font-mono bg-blue-100 px-2 py-0.5 rounded">
-            FHIR R4
-          </span>
-        </div>
-        <p className="text-xs text-blue-600 leading-relaxed">
-          Enter a patient ID to automatically pull their demographics, vitals,
-          labs, conditions, and emergency contact from Epic.
+    <div className="flex flex-col gap-5 flex-1">
+      {/* HEADER */}
+      <div className="text-center pt-4">
+        <div className="text-4xl mb-3">⚕️</div>
+        <h2 className="text-lg font-serif text-gray-800 mb-1">
+          Find Patient
+        </h2>
+        <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
+          Enter the patient ID or MRN to pull their data from Epic and
+          pre-fill the update form automatically.
         </p>
       </div>
 
+      {/* SEARCH */}
       <div className="flex flex-col gap-2">
         <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
           Patient ID or MRN
@@ -83,7 +92,7 @@ export default function EpicPatientSearch({
             onChange={(e) => {
               setPatientId(e.target.value);
               setError("");
-              setSearched(false);
+              setEpicFailed(false);
             }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="e.g. eJ4hbHiX4b2GQS..."
@@ -97,24 +106,51 @@ export default function EpicPatientSearch({
             {loading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              "Pull →"
+              "Search →"
             )}
           </button>
         </div>
 
         {error && (
-          <p className="text-red-500 text-xs">{error}</p>
-        )}
-
-        {searched && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700 flex items-center gap-2">
-            ✓ Patient data loaded — form pre-filled below
-          </div>
+          <p className="text-amber-600 text-xs leading-relaxed">{error}</p>
         )}
       </div>
 
-      <div className="text-xs text-gray-300 text-center">
-        Using Epic FHIR R4 sandbox — test with Epic sandbox patient IDs
+      {/* MANUAL ENTRY FALLBACK — shown when Epic fails */}
+      {epicFailed && (
+        <div className="flex flex-col gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-amber-700">
+            Enter Patient Name Manually
+          </div>
+          <input
+            type="text"
+            value={patientName}
+            onChange={(e) => setPatientName(e.target.value)}
+            placeholder="Patient name or identifier..."
+            className="w-full bg-white border border-amber-200 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500"
+          />
+          <button
+            onClick={() => {
+              if (patientId.trim()) {
+                onManualEntry(patientId.trim(), patientName.trim());
+              }
+            }}
+            disabled={!patientId.trim()}
+            className="w-full bg-amber-600 text-white rounded-xl p-3 text-sm font-semibold hover:bg-amber-700 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Continue with Manual Entry →
+          </button>
+        </div>
+      )}
+
+      {/* EPIC BADGE */}
+      <div className="flex items-center justify-center gap-2 mt-auto">
+        <span className="text-xs text-gray-300 font-mono">
+          Connected to Epic FHIR R4 Sandbox
+        </span>
+        <span className="text-xs text-blue-400 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+          FHIR R4
+        </span>
       </div>
     </div>
   );

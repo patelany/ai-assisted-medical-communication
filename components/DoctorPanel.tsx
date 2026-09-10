@@ -17,6 +17,8 @@ interface DoctorPanelProps {
   loading: boolean;
   accessCode: string;
   hasMessages: boolean;
+  onPatientLoaded: (name: string) => void;
+  onPatientCleared: () => void;
 }
 
 export default function DoctorPanel({
@@ -24,6 +26,8 @@ export default function DoctorPanel({
   loading,
   accessCode,
   hasMessages,
+  onPatientLoaded,
+  onPatientCleared,
 }: DoctorPanelProps) {
   const [status, setStatus] = useState("stable");
   const [action, setAction] = useState("");
@@ -37,17 +41,23 @@ export default function DoctorPanel({
   const [smsSending, setSmsSending] = useState(false);
   const [smsError, setSmsError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+
+  const [patientId, setPatientId] = useState("");
   const [patientName, setPatientName] = useState("");
+  const [admissionDate, setAdmissionDate] = useState<string | null>(null);
+  const [location, setLocation] = useState<string | null>(null);
   const [emergencyContact, setEmergencyContact] = useState<{
     name: string;
     phone: string;
   } | null>(null);
-  const [epicDataLoaded, setEpicDataLoaded] = useState(false);
-  const [showEpicSearch, setShowEpicSearch] = useState(false);
+  const [patientLoaded, setPatientLoaded] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [epicData, setEpicData] = useState<any>(null);
+  const [useAutoFill, setUseAutoFill] = useState(false);
 
   const handleSubmit = () => {
     if (!action.trim()) return;
-    onGenerate({ status, action, change, reason });
+    onGenerate({ status, action, change, reason, patientName, patientId });
     setStatus("stable");
     setAction("");
     setChange("");
@@ -68,16 +78,13 @@ export default function DoctorPanel({
     if (!phoneNumber.trim()) return;
     setSmsSending(true);
     setSmsError("");
-
     try {
       const res = await fetch("/api/sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber, accessCode }),
       });
-
       const data = await res.json();
-
       if (data.success) {
         setSmsSent(true);
         setPhoneNumber("");
@@ -87,30 +94,100 @@ export default function DoctorPanel({
     } catch (e) {
       setSmsError("Network error. Check your connection.");
     }
-
     setSmsSending(false);
   };
 
-  const handlePatientSelected = (patient: any) => {
+  const handlePatientFound = (patient: any) => {
+    setPatientId(patient.patientId || "");
     setPatientName(patient.patientName || "");
-    setStatus(patient.suggestedStatus || "stable");
-    setAction(patient.suggestedAction || "");
-    setReason(patient.suggestedReason || "");
-    setChange("");
-    setNoChange(false);
-    setNoReason(false);
-    setEpicDataLoaded(true);
-    setShowEpicSearch(false);
-
+    setAdmissionDate(patient.admissionDate || null);
+    setLocation(patient.location || null);
+    setEpicData(patient);
+    setPatientLoaded(true);
+    setIsManualEntry(false);
+    setUseAutoFill(false);
+    onPatientLoaded(patient.patientName || "");
     if (patient.emergencyContact) {
       setEmergencyContact(patient.emergencyContact);
       setPhoneNumber(patient.emergencyContact.phone || "");
     }
   };
 
+  const handleManualEntry = (id: string, name: string) => {
+    setPatientId(id);
+    setPatientName(name);
+    setPatientLoaded(true);
+    setIsManualEntry(true);
+    setUseAutoFill(false);
+    onPatientLoaded(name || id);
+  };
+
+  const handleAutoFill = () => {
+    if (!epicData) return;
+    setStatus(epicData.suggestedStatus || "stable");
+    setAction(epicData.suggestedAction || "");
+    setReason(epicData.suggestedReason || "");
+    setChange("");
+    setNoChange(false);
+    setNoReason(false);
+    setUseAutoFill(true);
+  };
+
+  const handleSwitchPatient = () => {
+    setPatientLoaded(false);
+    setIsManualEntry(false);
+    setPatientId("");
+    setPatientName("");
+    setAdmissionDate(null);
+    setLocation(null);
+    setEmergencyContact(null);
+    setPhoneNumber("");
+    setEpicData(null);
+    setUseAutoFill(false);
+    setAction("");
+    setChange("");
+    setReason("");
+    setStatus("stable");
+    setNoChange(false);
+    setNoReason(false);
+    onPatientCleared();
+  };
+
+  // BEFORE PATIENT SELECTED — full screen search, no sidebar
+  if (!patientLoaded) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-stone-100 p-6">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-4">⚕️</div>
+            <h1 className="text-2xl font-serif text-gray-800 mb-2">
+              ClarityAI
+            </h1>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Enter a patient ID to pull their data from Epic and begin
+              generating plain-language family updates.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <EpicPatientSearch
+              onPatientFound={handlePatientFound}
+              onManualEntry={handleManualEntry}
+            />
+          </div>
+
+          <p className="text-xs text-center text-gray-300 mt-4 font-mono">
+            Connected to Epic FHIR R4 Sandbox
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // AFTER PATIENT SELECTED — sidebar with clinical form
   return (
     <>
-      {/* MOBILE TOGGLE BUTTON */}
+      {/* MOBILE TOGGLE */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="lg:hidden fixed bottom-6 left-6 z-50 bg-stone-900 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-lg"
@@ -147,57 +224,63 @@ export default function DoctorPanel({
           Clinical Input
         </div>
 
-        {/* EPIC INTEGRATION */}
-        <div>
-          <button
-            onClick={() => setShowEpicSearch(!showEpicSearch)}
-            className={`w-full flex items-center justify-between border rounded-lg p-3 text-xs font-semibold transition-all ${
-              epicDataLoaded
-                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                : "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-400"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span>⚕️</span>
-              {epicDataLoaded
-                ? `Epic: ${patientName}`
-                : "Pull from Epic EHR"}
-            </span>
-            <span>{showEpicSearch ? "▲" : "▼"}</span>
-          </button>
-
-          {showEpicSearch && (
-            <div className="mt-3">
-              <EpicPatientSearch onPatientSelected={handlePatientSelected} />
+        {/* PATIENT HEADER */}
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-xs font-mono px-2 py-0.5 rounded font-semibold ${
+                  isManualEntry ? "bg-amber-500 text-white" : "bg-blue-500 text-white"
+                }`}>
+                  {isManualEntry ? "Manual" : "Epic ✓"}
+                </span>
+                {patientId && (
+                  <span className="text-xs text-slate-400 font-mono truncate">
+                    {patientId}
+                  </span>
+                )}
+              </div>
+              <div className="text-white font-semibold text-sm">
+                {patientName || "Unknown Patient"}
+              </div>
+              {admissionDate && (
+                <div className="text-slate-400 text-xs mt-0.5">
+                  Admitted: {new Date(admissionDate).toLocaleDateString()}
+                </div>
+              )}
+              {location && (
+                <div className="text-slate-400 text-xs">📍 {location}</div>
+              )}
+              {emergencyContact && (
+                <div className="text-slate-300 text-xs mt-1">
+                  📞 {emergencyContact.name} — {emergencyContact.phone}
+                </div>
+              )}
             </div>
-          )}
-
-          {epicDataLoaded && (
             <button
-              onClick={() => {
-                setShowEpicSearch(true);
-                setEpicDataLoaded(false);
-                setPatientName("");
-                setEmergencyContact(null);
-              }}
-              className="mt-2 text-xs text-gray-400 hover:text-gray-600 transition-all"
+              onClick={handleSwitchPatient}
+              className="text-xs text-slate-400 hover:text-white border border-slate-600 rounded-lg px-2 py-1 transition-all hover:border-slate-400 flex-shrink-0"
             >
-              Switch patient →
+              Switch
+            </button>
+          </div>
+
+          {/* AUTO-FILL BUTTON */}
+          {!isManualEntry && epicData && !useAutoFill && (
+            <button
+              onClick={handleAutoFill}
+              className="mt-3 w-full bg-blue-600 text-white rounded-lg p-2 text-xs font-semibold hover:bg-blue-700 transition-all"
+            >
+              ⚡ Auto-fill from Epic data
             </button>
           )}
-        </div>
 
-        {/* EMERGENCY CONTACT BANNER */}
-        {emergencyContact && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs">
-            <div className="font-bold text-amber-700 mb-1">
-              📞 Emergency Contact (from Epic)
+          {useAutoFill && (
+            <div className="mt-3 bg-blue-900 rounded-lg p-2 text-xs text-blue-200">
+              ✓ Form pre-filled from Epic — review and edit below
             </div>
-            <div className="text-amber-600">
-              {emergencyContact.name} — {emergencyContact.phone}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* STATUS */}
         <div>
@@ -295,12 +378,12 @@ export default function DoctorPanel({
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex gap-2">
           <span className="flex-shrink-0">🔒</span>
           <span>
-            AI will automatically scan for identifying information and remove it
-            before generating any update.
+            AI will automatically scan for identifying information and remove
+            it before generating any update.
           </span>
         </div>
 
-        {/* GENERATE BUTTON */}
+        {/* GENERATE */}
         <button
           onClick={() => {
             handleSubmit();
