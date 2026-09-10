@@ -97,7 +97,7 @@ export default function Home() {
     setTab("dashboard");
   };
 
-    const handleStartNextParticipant = () => {
+  const handleStartNextParticipant = () => {
     const newCode = generateCode();
     localStorage.setItem("clarityai_access_code", newCode);
     setAccessCode(newCode);
@@ -117,22 +117,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-100">
-      <header className="bg-stone-900 text-white px-9 h-14 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-baseline gap-3">
-          <span className="font-serif text-xl">
-            AI-Assisted Medical Communication
+
+      {/* HEADER */}
+      <header className="bg-stone-900 text-white px-4 md:px-9 h-14 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-baseline gap-2 md:gap-3 min-w-0">
+          <span className="font-serif text-base md:text-xl whitespace-nowrap">
+            AI-Assisted Medical
           </span>
-          <span className="font-mono text-xs text-stone-500 tracking-widest uppercase">
+          <span className="font-mono text-xs text-stone-500 tracking-widest uppercase hidden lg:block">
             Simplification & Family Update Platform
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-xs text-stone-500 tracking-widest uppercase">
-            Participant {participantCount}
+
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+          <span className="font-mono text-xs text-stone-500 tracking-widest uppercase hidden sm:block">
+            P{participantCount}
           </span>
           {dashboardUnlocked && (
-            <span className="font-mono text-xs text-emerald-500 tracking-widest uppercase flex items-center gap-1">
-              🔓 Dashboard Unlocked
+            <span className="font-mono text-xs text-emerald-500 tracking-widest uppercase hidden sm:flex items-center gap-1">
+              🔓
             </span>
           )}
           <nav className="flex gap-1">
@@ -140,21 +143,27 @@ export default function Home() {
               <button
                 key={key}
                 onClick={() => handleTabClick(key)}
-                className={`px-4 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
+                className={`px-2 md:px-4 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
                   tab === key
                     ? "bg-stone-700 text-white border-stone-600"
                     : "border-stone-700 text-stone-400 hover:text-white hover:bg-stone-800"
                 }`}
               >
                 {key === "dashboard" && !dashboardUnlocked ? "🔒 " : ""}
-                {label}
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">
+                  {key === "compose" ? "📋" : key === "viewer" ? "👁" : "📊"}
+                </span>
               </button>
             ))}
           </nav>
         </div>
       </header>
 
+      {/* BODY */}
       <div className="flex flex-1 overflow-hidden">
+
+        {/* COMPOSE TAB */}
         {tab === "compose" && (
           <>
             <DoctorPanel
@@ -164,16 +173,21 @@ export default function Home() {
               hasMessages={!!messages}
             />
 
-            <main className="flex-1 overflow-y-auto p-7 bg-stone-100">
+            <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
               {!messages && !loading && (
                 <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-stone-400">
                   <div className="text-5xl opacity-40">🏥</div>
-                  <div className="text-2xl font-serif text-stone-600">
+                  <div className="text-xl md:text-2xl font-serif text-stone-600">
                     No update yet
                   </div>
                   <div className="text-sm text-center max-w-xs leading-relaxed">
                     Fill in the clinical input and click Generate. AI will
                     de-identify the content and produce three message versions.
+                  </div>
+                  {/* Mobile hint */}
+                  <div className="md:hidden bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-500 text-center max-w-xs">
+                    Tap the <span className="font-bold">📋</span> button in the
+                    bottom left to open the clinical input form.
                   </div>
                 </div>
               )}
@@ -188,33 +202,37 @@ export default function Home() {
               )}
 
               {messages && !loading && (
-                <MessageCards
-                  messages={messages}
-                  onSubmitRatings={handleSubmitRatings}
-                />
+                <div className="max-w-2xl mx-auto">
+                  <MessageCards
+                    messages={messages}
+                    onSubmitRatings={handleSubmitRatings}
+                  />
+                </div>
               )}
             </main>
           </>
         )}
 
+        {/* VIEWER TAB */}
         {tab === "viewer" && (
           <main className="flex-1 overflow-y-auto bg-stone-100">
             <FamilyViewer correctCode={accessCode} />
           </main>
         )}
 
+        {/* DASHBOARD TAB */}
         {tab === "dashboard" && (
-          <main className="flex-1 overflow-y-auto p-7 bg-stone-100">
+          <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
             {!dashboardUnlocked ? (
               <ResearcherAuth
                 onAuthenticated={() => setDashboardUnlocked(true)}
               />
             ) : (
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-6 max-w-4xl mx-auto">
                 <div className="flex justify-end">
                   <button
                     onClick={handleStartNextParticipant}
-                    className="bg-stone-900 text-white rounded-lg px-5 py-2.5 text-xs font-mono tracking-wide hover:bg-stone-700 transition-all flex items-center gap-2"
+                    className="bg-stone-900 text-white rounded-lg px-4 md:px-5 py-2.5 text-xs font-mono tracking-wide hover:bg-stone-700 transition-all flex items-center gap-2"
                   >
                     Start Next Participant →
                   </button>

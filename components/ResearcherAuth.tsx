@@ -6,11 +6,7 @@ interface ResearcherAuthProps {
   onAuthenticated: () => void;
 }
 
-type AuthStep =
-  | "choose"
-  | "biometric"
-  | "password"
-  | "register-biometric";
+type AuthStep = "choose" | "biometric" | "password" | "register-biometric";
 
 export default function ResearcherAuth({
   onAuthenticated,
@@ -25,17 +21,16 @@ export default function ResearcherAuth({
   const [biometricRegistered, setBiometricRegistered] = useState(false);
 
   useEffect(() => {
-    const supported = typeof window !== "undefined" &&
+    const supported =
+      typeof window !== "undefined" &&
       window.PublicKeyCredential !== undefined;
     const registered = !!localStorage.getItem("clarityai_credential_id");
     setBiometricSupported(supported);
     setBiometricRegistered(registered);
 
-    // If biometric is registered on this device go straight to Touch ID
     if (supported && registered) {
       setStep("biometric");
     } else {
-      // Otherwise go straight to password — no choice screen needed
       setStep("password");
     }
   }, []);
@@ -45,7 +40,9 @@ export default function ResearcherAuth({
     setError("");
 
     try {
-      const existingCredential = localStorage.getItem("clarityai_credential_id");
+      const existingCredential = localStorage.getItem(
+        "clarityai_credential_id"
+      );
 
       if (!existingCredential) {
         setError("No biometric registered on this device.");
@@ -58,9 +55,8 @@ export default function ResearcherAuth({
         rpId: window.location.hostname,
         allowCredentials: [
           {
-            id: Uint8Array.from(
-              atob(existingCredential),
-              (c) => c.charCodeAt(0)
+            id: Uint8Array.from(atob(existingCredential), (c) =>
+              c.charCodeAt(0)
             ),
             type: "public-key",
           },
@@ -101,7 +97,6 @@ export default function ResearcherAuth({
       const data = await res.json();
 
       if (data.success) {
-        // Password succeeded — offer biometric registration if supported and not yet registered
         if (biometricSupported && !biometricRegistered) {
           setStep("register-biometric");
         } else {
@@ -144,9 +139,9 @@ export default function ResearcherAuth({
         timeout: 60000,
       };
 
-      const credential = await navigator.credentials.create({
+      const credential = (await navigator.credentials.create({
         publicKey: registerOptions,
-      }) as PublicKeyCredential;
+      })) as PublicKeyCredential;
 
       localStorage.setItem(
         "clarityai_credential_id",
@@ -168,8 +163,8 @@ export default function ResearcherAuth({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-96 px-6">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-sm">
+    <div className="flex flex-col items-center justify-center min-h-96 px-4 md:px-6 py-8">
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 w-full max-w-sm">
 
         {/* TOUCH ID STEP */}
         {step === "biometric" && (
@@ -208,7 +203,7 @@ export default function ResearcherAuth({
                   setStep("password");
                   setError("");
                 }}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center"
+                className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center py-2"
               >
                 Use password instead →
               </button>
@@ -241,6 +236,8 @@ export default function ResearcherAuth({
                   placeholder="Enter username"
                   className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600"
                   onKeyDown={(e) => e.key === "Enter" && handlePassword()}
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
 
@@ -254,12 +251,12 @@ export default function ResearcherAuth({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600 pr-10"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600 pr-14"
                     onKeyDown={(e) => e.key === "Enter" && handlePassword()}
                   />
                   <button
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs py-1 px-1"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
@@ -280,7 +277,7 @@ export default function ResearcherAuth({
                     setStep("biometric");
                     setError("");
                   }}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center"
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center py-2"
                 >
                   ← Use Touch ID instead
                 </button>
@@ -298,7 +295,8 @@ export default function ResearcherAuth({
                 Set Up Touch ID
               </h2>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Register Touch ID on this device so you can skip the password next time. Your fingerprint never leaves this device.
+                Register Touch ID on this device so you can skip the password
+                next time. Your fingerprint never leaves this device.
               </p>
             </div>
 
@@ -320,7 +318,7 @@ export default function ResearcherAuth({
 
               <button
                 onClick={onAuthenticated}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center"
+                className="text-xs text-gray-400 hover:text-gray-600 transition-all text-center py-2"
               >
                 Skip for now →
               </button>
@@ -336,7 +334,8 @@ export default function ResearcherAuth({
 
         <div className="mt-6 pt-4 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-300 leading-relaxed">
-            Biometric data never leaves this device. Authentication uses WebAuthn — an open standard for secure passwordless login.
+            Biometric data never leaves this device. Authentication uses
+            WebAuthn — an open standard for secure passwordless login.
           </p>
         </div>
       </div>

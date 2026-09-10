@@ -19,21 +19,25 @@ interface DashboardProps {
   responses: Response[];
 }
 
-const VERSIONS = ["raw", "simplified", "context"] as const;
+const VERSIONS = ["raw", "hybrid", "context"] as const;
 
 const VERSION_LABELS: Record<string, string> = {
   raw: "Raw Clinical",
-  simplified: "AI Simplified",
+  hybrid: "Hybrid",
   context: "AI + Context",
 };
 
 const BAR_COLORS: Record<string, string> = {
   raw: "bg-red-500",
-  simplified: "bg-amber-500",
+  hybrid: "bg-amber-500",
   context: "bg-emerald-600",
 };
 
-function avg(responses: Response[], version: string, key: "understanding" | "anxiety") {
+function avg(
+  responses: Response[],
+  version: string,
+  key: "understanding" | "anxiety"
+) {
   const vals = responses
     .filter((r) => r.ratings[version]?.[key])
     .map((r) => r.ratings[version][key]);
@@ -50,7 +54,7 @@ function BarChart({
   metricKey: "understanding" | "anxiety";
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5">
       <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
         {title}
       </div>
@@ -58,11 +62,11 @@ function BarChart({
         {VERSIONS.map((version) => {
           const value = avg(responses, version, metricKey);
           return (
-            <div key={version} className="flex items-center gap-3">
-              <div className="w-24 text-xs font-mono text-gray-400 text-right">
+            <div key={version} className="flex items-center gap-2 md:gap-3">
+              <div className="w-16 md:w-24 text-xs font-mono text-gray-400 text-right flex-shrink-0">
                 {VERSION_LABELS[version]}
               </div>
-              <div className="flex-1 bg-gray-100 rounded h-5 overflow-hidden">
+              <div className="flex-1 bg-gray-100 rounded h-6 md:h-5 overflow-hidden">
                 <div
                   className={`h-full rounded flex items-center justify-end pr-2 text-white text-xs font-bold font-mono transition-all duration-1000 ${BAR_COLORS[version]}`}
                   style={{ width: value > 0 ? `${(value / 5) * 100}%` : "0%" }}
@@ -91,9 +95,16 @@ export default function Dashboard({ responses }: DashboardProps) {
     );
   }
 
-const exportCSV = () => {
+  const exportCSV = () => {
     const rows = [
-      ["Participant ID", "Participant Type", "Version", "Understanding", "Anxiety", "Notes"],
+      [
+        "Participant ID",
+        "Participant Type",
+        "Version",
+        "Understanding",
+        "Anxiety",
+        "Notes",
+      ],
     ];
     responses.forEach((r) => {
       VERSIONS.forEach((v) => {
@@ -118,6 +129,8 @@ const exportCSV = () => {
 
   return (
     <div className="flex flex-col gap-5">
+
+      {/* EXPORT BUTTON */}
       <div className="flex justify-end">
         <button
           onClick={exportCSV}
@@ -126,8 +139,10 @@ const exportCSV = () => {
           ⬇ Export CSV
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+
+      {/* STAT CARDS — single column on mobile, 3 columns on tablet+ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 text-center">
           <div className="text-4xl font-serif text-emerald-700 mb-1">
             {responses.length}
           </div>
@@ -135,7 +150,7 @@ const exportCSV = () => {
             Responses
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 text-center">
           <div className="text-4xl font-serif text-emerald-700 mb-1">
             {avg(responses, "context", "understanding") > 0
               ? avg(responses, "context", "understanding").toFixed(1)
@@ -145,7 +160,7 @@ const exportCSV = () => {
             Avg Understanding (AI+Context)
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 text-center">
           <div className="text-4xl font-serif text-red-600 mb-1">
             {avg(responses, "raw", "anxiety") > 0
               ? avg(responses, "raw", "anxiety").toFixed(1)
@@ -157,6 +172,7 @@ const exportCSV = () => {
         </div>
       </div>
 
+      {/* BAR CHARTS */}
       <BarChart
         title="Avg Understanding Score (1–5, higher = clearer)"
         responses={responses}
@@ -169,60 +185,83 @@ const exportCSV = () => {
         metricKey="anxiety"
       />
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      {/* QUALITATIVE TABLE — scrollable on mobile */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5">
         <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
           Qualitative Responses
         </div>
-        <table className="w-full text-xs">
-          <thead>
-<tr className="border-b border-gray-100">
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">ID</th>
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">Type</th>
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">Version</th>
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">Understanding</th>
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">Anxiety</th>
-              <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {responses.flatMap((r) =>
-              VERSIONS.map((v) => (
-<tr key={`${r.id}-${v}`} className="border-b border-gray-50">
-                  <td className="py-2 pr-3 font-mono text-gray-600 font-bold">
-                    {r.participantId || "—"}
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                      r.participantType === "medical"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-purple-100 text-purple-700"
-                    }`}>
-                      {r.participantType === "medical" ? "🩺 Medical" : "👤 Non-Medical"}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
-                      v === "raw" ? "bg-red-100 text-red-700" :
-                      v === "simplified" ? "bg-amber-100 text-amber-700" :
-                      "bg-emerald-100 text-emerald-700"
-                    }`}>
-                      {VERSION_LABELS[v]}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-emerald-700 font-bold">
-                    {r.ratings[v]?.understanding || "—"}
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-red-600 font-bold">
-                    {r.ratings[v]?.anxiety || "—"}
-                  </td>
-                  <td className="py-2 text-gray-400 italic">
-                    {r.notes[v] || "No notes"}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs min-w-[500px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  ID
+                </th>
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  Type
+                </th>
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  Version
+                </th>
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  Understanding
+                </th>
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  Anxiety
+                </th>
+                <th className="text-left pb-2 text-gray-400 font-bold uppercase tracking-wide">
+                  Notes
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {responses.flatMap((r) =>
+                VERSIONS.map((v) => (
+                  <tr key={`${r.id}-${v}`} className="border-b border-gray-50">
+                    <td className="py-2 pr-3 font-mono text-gray-600 font-bold">
+                      {r.participantId || "—"}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          r.participantType === "medical"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                      >
+                        {r.participantType === "medical"
+                          ? "🩺 Medical"
+                          : "👤 Non-Medical"}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                          v === "raw"
+                            ? "bg-red-100 text-red-700"
+                            : v === "hybrid"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {VERSION_LABELS[v]}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-emerald-700 font-bold">
+                      {r.ratings[v]?.understanding || "—"}
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-red-600 font-bold">
+                      {r.ratings[v]?.anxiety || "—"}
+                    </td>
+                    <td className="py-2 text-gray-400 italic">
+                      {r.notes[v] || "No notes"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

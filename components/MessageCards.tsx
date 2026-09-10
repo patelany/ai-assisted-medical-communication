@@ -69,7 +69,7 @@ function StarRating({
         <button
           key={n}
           onClick={() => onChange(n)}
-          className={`w-7 h-7 rounded border text-xs font-bold font-mono transition-all ${
+          className={`w-8 h-8 md:w-7 md:h-7 rounded border text-xs font-bold font-mono transition-all ${
             value >= n
               ? danger
                 ? "bg-red-100 border-red-600 text-red-700"
@@ -114,11 +114,11 @@ export default function MessageCards({
     <div className="flex flex-col gap-4">
 
       {/* PARTICIPANT INFO */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5">
         <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
           Participant Information
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
             <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
               Participant ID
@@ -143,7 +143,7 @@ export default function MessageCards({
                 <button
                   key={type.value}
                   onClick={() => setParticipantType(type.value)}
-                  className={`border rounded-lg p-2 text-xs font-semibold text-left transition-all px-3 ${
+                  className={`border rounded-lg p-3 md:p-2 text-xs font-semibold text-left transition-all px-3 ${
                     participantType === type.value
                       ? "border-emerald-600 bg-emerald-50 text-emerald-700"
                       : attempted && !participantType
@@ -172,8 +172,13 @@ export default function MessageCards({
             🔒 HIPAA De-identification Report
           </div>
           {messages.hipaa.map((h, i) => (
-            <div key={i} className="flex items-center gap-3 mb-2 text-xs">
-              <span className="text-gray-400 w-24 flex-shrink-0">{h.type}</span>
+            <div
+              key={i}
+              className="flex flex-wrap items-center gap-2 md:gap-3 mb-2 text-xs"
+            >
+              <span className="text-gray-400 w-20 md:w-24 flex-shrink-0">
+                {h.type}
+              </span>
               <span className="line-through text-red-500 font-mono">
                 {h.original}
               </span>
@@ -195,7 +200,8 @@ export default function MessageCards({
         const meta = VERSION_META[version];
         const missingUnderstanding = !(ratings as any)[version]?.understanding;
         const missingAnxiety = !(ratings as any)[version]?.anxiety;
-        const cardIncomplete = attempted && (missingUnderstanding || missingAnxiety);
+        const cardIncomplete =
+          attempted && (missingUnderstanding || missingAnxiety);
 
         return (
           <div
@@ -206,13 +212,16 @@ export default function MessageCards({
                 : "border-gray-200"
             }`}
           >
-            <div className="p-3 border-b border-gray-200 flex items-center gap-3">
+            {/* CARD HEADER */}
+            <div className="p-3 border-b border-gray-200 flex flex-wrap items-center gap-2 md:gap-3">
               <span
-                className={`text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium ${meta.tagClass}`}
+                className={`text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium flex-shrink-0 ${meta.tagClass}`}
               >
                 {meta.label}
               </span>
-              <span className="text-xs text-gray-400">{meta.desc}</span>
+              <span className="text-xs text-gray-400 hidden sm:block">
+                {meta.desc}
+              </span>
             </div>
 
             <div className="p-4">
@@ -226,53 +235,59 @@ export default function MessageCards({
                 {messages[version]}
               </p>
 
-              <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                    Understanding
-                  </div>
-                  <StarRating
-                    value={(ratings as any)[version]?.understanding || 0}
-                    onChange={(n) => updateRating(version, "understanding", n)}
-                  />
-                  {attempted && missingUnderstanding && (
-                    <div className="flex items-center gap-1 text-red-500 text-xs">
-                      <span>ⓘ</span>
-                      <span>Please rate understanding</span>
+              {/* RATINGS — stacked on mobile, side by side on tablet+ */}
+              <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-4">
+
+                {/* Understanding + Anxiety side by side on tablet, stacked on phone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Understanding
                     </div>
-                  )}
+                    <StarRating
+                      value={(ratings as any)[version]?.understanding || 0}
+                      onChange={(n) =>
+                        updateRating(version, "understanding", n)
+                      }
+                    />
+                    {attempted && missingUnderstanding && (
+                      <div className="flex items-center gap-1 text-red-500 text-xs">
+                        <span>ⓘ</span>
+                        <span>Please rate understanding</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Anxiety Level
+                    </div>
+                    <StarRating
+                      danger
+                      value={(ratings as any)[version]?.anxiety || 0}
+                      onChange={(n) => updateRating(version, "anxiety", n)}
+                    />
+                    {attempted && missingAnxiety && (
+                      <div className="flex items-center gap-1 text-red-500 text-xs">
+                        <span>ⓘ</span>
+                        <span>Please rate anxiety</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                    Anxiety Level
-                  </div>
-                  <StarRating
-                    danger
-                    value={(ratings as any)[version]?.anxiety || 0}
-                    onChange={(n) => updateRating(version, "anxiety", n)}
-                  />
-                  {attempted && missingAnxiety && (
-                    <div className="flex items-center gap-1 text-red-500 text-xs">
-                      <span>ⓘ</span>
-                      <span>Please rate anxiety</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="col-span-2">
-                  <textarea
-                    placeholder="What do you think is happening? What's unclear?"
-                    value={notes[version] || ""}
-                    onChange={(e) =>
-                      setNotes((prev) => ({
-                        ...prev,
-                        [version]: e.target.value,
-                      }))
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs resize-none focus:outline-none focus:border-emerald-600 min-h-12"
-                  />
-                </div>
+                {/* Notes */}
+                <textarea
+                  placeholder="What do you think is happening? What's unclear?"
+                  value={notes[version] || ""}
+                  onChange={(e) =>
+                    setNotes((prev) => ({
+                      ...prev,
+                      [version]: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs md:p-2 resize-none focus:outline-none focus:border-emerald-600 min-h-14 md:min-h-12"
+                />
               </div>
             </div>
           </div>
@@ -283,7 +298,9 @@ export default function MessageCards({
       <button
         onClick={() => {
           const missingRatings = (["raw", "hybrid", "context"] as const).some(
-            (v) => !(ratings as any)[v]?.understanding || !(ratings as any)[v]?.anxiety
+            (v) =>
+              !(ratings as any)[v]?.understanding ||
+              !(ratings as any)[v]?.anxiety
           );
           const hasErrors = missingRatings || !participantType;
           if (hasErrors) {
@@ -291,13 +308,17 @@ export default function MessageCards({
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
           }
-          onSubmitRatings(ratings as Ratings, notes, participantId, participantType);
+          onSubmitRatings(
+            ratings as Ratings,
+            notes,
+            participantId,
+            participantType
+          );
         }}
-        className="bg-emerald-700 text-white rounded-lg p-3 text-sm font-semibold hover:bg-emerald-800 transition-all"
+        className="bg-emerald-700 text-white rounded-lg p-4 md:p-3 text-sm font-semibold hover:bg-emerald-800 transition-all"
       >
         Submit Ratings →
       </button>
-
     </div>
   );
 }
