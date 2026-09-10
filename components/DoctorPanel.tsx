@@ -34,14 +34,18 @@ export default function DoctorPanel({
   const [smsSending, setSmsSending] = useState(false);
   const [smsError, setSmsError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [noChange, setNoChange] = useState(false);
+  const [noReason, setNoReason] = useState(false);
 
-  const handleSubmit = () => {
+    const handleSubmit = () => {
     if (!action.trim()) return;
     onGenerate({ status, action, change, reason });
     setStatus("stable");
     setAction("");
     setChange("");
     setReason("");
+    setNoChange(false);
+    setNoReason(false);
   };
 
   const handleCopy = () => {
@@ -152,28 +156,58 @@ export default function DoctorPanel({
           />
         </div>
 
-        <div>
+                <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Change in Plan
           </div>
           <input
-            value={change}
+            value={noChange ? "No change in plan" : change}
             onChange={(e) => setChange(e.target.value)}
+            disabled={noChange}
             placeholder="e.g. Procedure postponed..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600"
+            className={`w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:border-emerald-600 ${
+              noChange ? "opacity-40 cursor-not-allowed" : ""
+            }`}
           />
+          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={noChange}
+              onChange={(e) => {
+                setNoChange(e.target.checked);
+                if (e.target.checked) setChange("");
+              }}
+              className="w-3.5 h-3.5 accent-emerald-700"
+            />
+            <span className="text-xs text-gray-400">No change in plan</span>
+          </label>
         </div>
 
-        <div>
+                <div>
           <div className="text-xs font-bold tracking-wide uppercase text-gray-400 mb-2">
             Clinical Reason
           </div>
           <textarea
-            value={reason}
+            value={noReason ? "No additional reason" : reason}
             onChange={(e) => setReason(e.target.value)}
+            disabled={noReason}
             placeholder="e.g. Abnormal coagulation markers..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-emerald-600 min-h-16"
+            className={`w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-emerald-600 min-h-16 ${
+              noReason ? "opacity-40 cursor-not-allowed" : ""
+            }`}
           />
+          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={noReason}
+              onChange={(e) => {
+                setNoReason(e.target.checked);
+                if (e.target.checked) setReason("");
+              }}
+              className="w-3.5 h-3.5 accent-emerald-700"
+            />
+            <span className="text-xs text-gray-400">No additional reason</span>
+          </label>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex gap-2">
