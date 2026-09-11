@@ -5,6 +5,7 @@ import DoctorPanel from "@/components/DoctorPanel";
 import FamilyViewer from "@/components/FamilyViewer";
 import Dashboard from "@/components/Dashboard";
 import ResearcherAuth from "@/components/ResearcherAuth";
+import DoctorAuth from "@/components/DoctorAuth";
 
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -25,6 +26,7 @@ export default function Home() {
   const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
   const [patientLoaded, setPatientLoaded] = useState(false);
   const [currentPatientName, setCurrentPatientName] = useState("");
+  const [doctorAuthed, setDoctorAuthed] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("clarityai_access_code");
@@ -34,6 +36,12 @@ export default function Home() {
       const newCode = generateCode();
       localStorage.setItem("clarityai_access_code", newCode);
       setAccessCode(newCode);
+    }
+
+    // Check if doctor is already authenticated
+    const authed = localStorage.getItem("clarityai_doctor_authed");
+    if (authed === "true") {
+      setDoctorAuthed(true);
     }
   }, []);
 
@@ -87,6 +95,14 @@ export default function Home() {
     setMessages(null);
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem("clarityai_doctor_authed");
+    setDoctorAuthed(false);
+    setPatientLoaded(false);
+    setCurrentPatientName("");
+    setMessages(null);
+  };
+
   const handleTabClick = (key: string) => {
     if (key === "dashboard" && !dashboardUnlocked) {
       setTab("dashboard");
@@ -94,6 +110,18 @@ export default function Home() {
     }
     setTab(key);
   };
+
+  // DOCTOR AUTH GATE
+  if (!doctorAuthed) {
+    return (
+      <div className="min-h-screen flex flex-col bg-stone-100">
+        <header className="bg-stone-900 text-white px-4 md:px-9 h-14 flex items-center flex-shrink-0">
+          <span className="font-serif text-base md:text-xl">ClarityAI</span>
+        </header>
+        <DoctorAuth onAuthenticated={() => setDoctorAuthed(true)} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-100">
@@ -139,6 +167,14 @@ export default function Home() {
               </button>
             ))}
           </nav>
+
+          {/* SIGN OUT */}
+          <button
+            onClick={handleSignOut}
+            className="text-xs text-stone-500 hover:text-white border border-stone-700 rounded-lg px-3 py-1.5 transition-all hover:border-stone-500 hidden sm:block"
+          >
+            Sign Out
+          </button>
         </div>
       </header>
 

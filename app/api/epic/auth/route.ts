@@ -9,6 +9,8 @@ const CLIENT_ID = process.env.EPIC_CLIENT_ID!;
 
 async function getAccessToken(): Promise<string> {
   const privateKeyPem = process.env.EPIC_PRIVATE_KEY!.replace(/\\n/g, "\n");
+  console.log("Key starts with:", privateKeyPem.substring(0, 50));
+  
   const privateKey = await importPKCS8(privateKeyPem, "RS384");
 
   const jwt = await new SignJWT({})
@@ -21,11 +23,16 @@ async function getAccessToken(): Promise<string> {
     .setExpirationTime("5m")
     .sign(privateKey);
 
+  console.log("Client ID being used:", CLIENT_ID);
+  console.log("Token URL:", EPIC_TOKEN_URL);
+  console.log("JWT preview:", jwt.substring(0, 100));
+
   const params = new URLSearchParams({
     grant_type: "client_credentials",
     client_assertion_type:
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
     client_assertion: jwt,
+    scope: "system/Patient.read system/Observation.read system/Condition.read system/DocumentReference.read system/ServiceRequest.read system/RelatedPerson.read system/Encounter.read system/MedicationRequest.read",
   });
 
   const res = await fetch(EPIC_TOKEN_URL, {
@@ -34,7 +41,9 @@ async function getAccessToken(): Promise<string> {
     body: params.toString(),
   });
 
-  const data = await res.json();
+  const responseText = await res.text();
+  console.log("Epic full response:", responseText);
+  const data = JSON.parse(responseText);
 
   if (!data.access_token) {
     throw new Error(`Epic auth failed: ${JSON.stringify(data)}`);

@@ -1,45 +1,58 @@
-# AI-Assisted Medical Communication Simplification & Family Update Platform
+# ClarityAI — Medical Communication Platform
 
-A full-stack research platform that uses AI to transform complex clinical language into plain-language patient updates, delivered automatically to family members via a secure access code system.
+A full-stack clinical platform that integrates with Epic EHR via FHIR R4 to automatically transform patient data into plain-language family updates, delivered securely through a 6-digit access code system.
 
-Built as an independent research project to study how AI-simplified medical communication affects family understanding and anxiety compared to raw clinical language.
+Built as an independent research project to study how AI-simplified medical communication affects family understanding and anxiety compared to raw clinical language — and as a prototype for a hospital-deployable communication tool.
+
+**Live:** https://ai-assisted-medical-communication.vercel.app
 
 ---
 
 ## Motivation
 
-When a loved one is hospitalized, the immediate family is often too overwhelmed to keep friends and extended family informed. Those waiting for news can go hours — or an entire day — without an update, not because nothing is happening, but because the people who know are too focused on being present.
+When a loved one is hospitalized, the immediate family is often too overwhelmed to keep friends and extended family informed. Those waiting for news can go hours without an update — not because nothing is happening, but because the people who know are too focused on being present.
 
-This project was born from that experience. It aims to remove the communication burden from immediate family entirely, while ensuring that everyone who cares receives clear, reassuring updates automatically.
+ClarityAI removes the communication burden from the care team entirely. A clinician searches for a patient, reviews an auto-filled update form pulled from Epic, clicks Generate, and the family receives a plain-language update instantly — no phone calls, no repeated explanations, no miscommunication.
 
 ---
 
 ## Research Question
 
-> How does AI-simplified medical communication affect user understanding and emotional response compared to raw clinical language?
+> How does AI-simplified medical communication affect family understanding and emotional response compared to raw clinical language?
 
 ### Hypothesis
-AI-simplified and context-enhanced updates will increase comprehension and reduce anxiety compared to unmodified clinical language, with hybrid versions serving both medical and non-medical audiences most effectively.
+Hybrid messages — plain English with key clinical values preserved — will produce the highest understanding scores and lowest anxiety scores across both medical and non-medical family members.
 
 ---
 
 ## System Architecture
 
 ```
-Doctor Input
+Doctor opens ClarityAI
+     ↓
+Searches patient by name or MRN
+     ↓
+Epic FHIR R4 API pulls patient data (8 parallel calls):
+  Patient demographics · Vitals · Labs · Conditions
+  Clinical notes · Orders · Emergency contact · Encounter
+     ↓
+Doctor chooses: Auto-fill from Epic OR Enter manually
+     ↓
+Reviews and edits clinical form
+     ↓
+Clicks Generate
      ↓
 Layer 1: AWS Comprehend Medical — PHI detection & redaction
-     ↓
-Layer 2: Claude (claude-sonnet-4-6) — secondary PHI check + message transformation
+Layer 2: Claude — secondary PHI pass + message transformation
      ↓
 Three message versions generated:
   • Raw Clinical      — precise medical language, de-identified
-  • Hybrid            — plain English with clinical values preserved (e.g. INR 2.8)
+  • Hybrid            — plain English with clinical values preserved
   • AI + Context      — warm, fully plain language, no jargon
      ↓
-Updates stored → Family viewer polls every 10 seconds
+Hybrid version posted to family viewer automatically
      ↓
-Family members access via 6-digit code (delivered via Twilio SMS)
+Family accesses updates via 6-digit code at /view
      ↓
 AI chat assistant available for follow-up questions
 ```
@@ -49,38 +62,42 @@ AI chat assistant available for follow-up questions
 ## Key Features
 
 ### Clinical Layer
-- Structured doctor input — status, planned action, change in plan, clinical reason
-- **Two-layer HIPAA de-identification pipeline**
-  - AWS Comprehend Medical (primary — trained specifically on clinical text)
+- **Epic FHIR R4 integration** — patient search by name or MRN, 8 parallel data pulls
+- **Patient-first workflow** — form locked until patient is confirmed in Epic
+- **Three-step patient selection** — search → results list → auto-fill or manual entry
+- **Two-layer HIPAA de-identification pipeline:**
+  - AWS Comprehend Medical (primary — trained on clinical text)
   - Claude secondary pass (catches relative dates, room numbers, implicit identifiers)
-- Visual HIPAA report showing exactly what was redacted and why
+  - Medical abbreviation whitelist (ICU, ER, INR, WBC, etc. never redacted)
+- **Visual HIPAA report** showing exactly what was redacted and why
 - Six patient status types: Stable, Improving, Delayed, Under Review, Awaiting Procedure, Critical
 
 ### Research Layer
-- Three message versions per scenario for side-by-side comparison
-- Per-version ratings: Understanding (1–5) and Anxiety (1–5)
-- Qualitative free-text notes per version
-- Participant ID (auto-generated) and type (Medical / Non-Medical)
-- Form validation with inline red-outline error indicators
-- Dashboard with live bar charts comparing average scores across versions
-- CSV export for statistical analysis
+- **Self-administered study** at `/study` — fully anonymous, no researcher present
+- **Three-step demographics** — age range, medical background, prior hospitalization experience
+- **3 randomized scenarios** per participant from 4 pre-built clinical situations
+- **Randomized message order** per scenario — labeled A/B/C to prevent label bias
+- **Supabase database** — study responses persist permanently, never lost on server restart
+- **Research dashboard** — bar charts comparing understanding and anxiety across message types
+- **Group breakdowns** — by medical background, age range, prior hospitalization experience
+- **CSV export** for statistical analysis
+- **WebAuthn biometric authentication** (Touch ID) protecting the dashboard
 
 ### Family Layer
-- 6-digit access code generated per patient session, stored in localStorage
-- Twilio SMS delivery — one text sent once, family never needs to be texted again
-- Live update feed polling every 10 seconds — no refresh needed
-- Expandable clinical details clipboard for medically-trained family members
-- AI chat assistant (Claude) for follow-up questions about updates
-  - Context-aware — knows the most recent update
-  - Guardrailed — never gives medical advice, always redirects clinical questions to care team
+- **6-digit access code** per patient session, persistent in localStorage
+- **Web SMS opt-in form** — Twilio compliant, consent checkbox not pre-selected
+- **Live update feed** — polls every 10 seconds, no refresh needed
+- **Dark slate Clinical Reference panel** — highlights clinical values (INR 2.8, WBC 8.2)
+- **AI chat assistant** — context-aware, guardrailed against medical advice
+- **Standalone `/view` route** — families never see the doctor interface
 
 ### Security Layer
-- API keys never exposed client-side — all AI calls routed through Next.js server API routes
-- AWS Comprehend Medical IAM user scoped to minimum required permissions (principle of least privilege)
-- Researcher dashboard protected by WebAuthn biometric authentication (Touch ID)
-- Password fallback with server-side credential validation
-- Biometric registration gated behind password — prevents unauthorized credential enrollment
-- `.env.local` excluded from version control via `.gitignore`
+- API keys server-side only — never exposed to the browser
+- AWS IAM user scoped to minimum permissions (ComprehendMedical only)
+- WebAuthn biometric auth for researcher dashboard
+- Password fallback with server-side validation
+- Biometric registration gated behind password
+- `.env.local` excluded from version control
 
 ---
 
@@ -88,40 +105,77 @@ AI chat assistant available for follow-up questions
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (App Router) |
+| Framework | Next.js (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
+| EHR Integration | Epic FHIR R4 (JWT RS384 auth) |
 | AI — Message Transformation | Anthropic Claude (claude-sonnet-4-6) |
 | AI — PHI Detection (Primary) | AWS Comprehend Medical |
 | AI — PHI Detection (Secondary) | Claude prompt-based |
 | AI — Chat Assistant | Anthropic Claude |
+| Study Database | Supabase (PostgreSQL) |
 | SMS Delivery | Twilio |
 | Authentication | WebAuthn (biometric) + server-side password |
 | Deployment | Vercel |
 
 ---
 
-## Experiment Design
+## Epic FHIR Integration
 
-**Independent Variable:** Message type (Raw Clinical / Hybrid / AI + Context)
+ClarityAI integrates with Epic via the FHIR R4 standard using JWT RS384 backend authentication.
 
-**Dependent Variables:**
-- Understanding score (1–5 Likert scale)
-- Anxiety score (1–5 Likert scale)
-- Qualitative interpretation (free text)
+**Registered APIs:**
+- Patient.Read / Search (Demographics)
+- Observation.Read / Search (Labs, Vital Signs, Assessments, Labor & Delivery, OB/GYN, Social History, Outside Record Results, DICOM Image Characteristics)
+- Condition.Read / Search (Encounter Diagnosis, Problems, Infection, Care Plan Problem, Health Concerns)
+- DocumentReference.Read / Search (Clinical Notes)
+- ServiceRequest.Read / Search (Orders)
+- RelatedPerson.Read / Search (Friends and Family — emergency contacts)
+- Encounter.Read / Search (Patient Chart)
+- MedicationRequest.Read / Search (Signed Medication Order)
 
-**Moderating Variable:** Participant type (Medical Professional / Non-Medical)
+**Patient data pull:** 8 parallel `Promise.all()` calls building suggestedStatus, suggestedAction, suggestedReason, emergency contact, vitals, labs, conditions, and orders.
 
-**Participants:** 15–30 volunteers across medical and non-medical backgrounds
+**Test patient:** Camila Lopez (Epic sandbox)
 
-**Procedure:**
-1. Researcher fills in clinical scenario on Doctor View
-2. Participant rates all three message versions on understanding and anxiety
-3. Participant adds qualitative notes on what was clear or unclear
-4. After rating, participant is told versions were AI-generated and asked for their reaction
-5. Data exported as CSV for statistical analysis
+**Path to production:** Epic App Orchard application → first hospital pilot (free) → convert to paid.
 
-**Fictional scenarios only — no real patient data used at any stage.**
+---
+
+## Research Study
+
+**Access the study:** https://ai-assisted-medical-communication.vercel.app/study
+
+**Study code:** `CLARITY2026`
+
+**Design:**
+- **Independent Variable:** Message type (Raw Clinical / Hybrid / AI + Context)
+- **Dependent Variables:** Understanding score (1–5 Likert), Anxiety score (1–5 Likert), Qualitative notes
+- **Moderating Variables:** Medical background, age range, prior hospitalization experience
+- **Participants:** 20–30 volunteers
+- **Within-subjects design** — each participant rates all three versions per scenario
+- **Randomization** — scenario order and message order randomized per participant
+- **Label blinding** — versions shown as Message A/B/C, not Raw/Hybrid/Context
+- **Debrief** — AI-generated nature revealed after all ratings submitted
+- **Anonymous** — random participant IDs, no PII collected
+
+**All scenarios are fictional — no real patient data used at any stage.**
+
+---
+
+## Business Model
+
+**Free for families — always.**
+
+**Paid by hospitals:** $500–2,000/month per department.
+
+Rationale: Families are already in crisis. Charging them to receive information about their loved one is ethically indefensible. Hospitals benefit from reduced nursing interruptions, improved patient satisfaction scores, and better family communication — quantifiable value they will pay for.
+
+**Go-to-market path:**
+1. Run research study → collect data proving communication improvement
+2. Use data to pitch hospital pilot (free, 3 months)
+3. Convert pilot to paid after proving value
+4. Apply to Epic App Orchard for embedded workflow integration
 
 ---
 
@@ -129,25 +183,31 @@ AI chat assistant available for follow-up questions
 
 ### Prerequisites
 - Node.js 18+
-- Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
+- Anthropic API key
 - AWS account with Comprehend Medical access
-- Twilio account with a phone number
+- Twilio account
+- Supabase project
+- Epic developer account (fhir.epic.com)
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root:
-
 ```
-ANTHROPIC_API_KEY=your-key-here
-AWS_ACCESS_KEY_ID=your-key-here
-AWS_SECRET_ACCESS_KEY=your-secret-here
+ANTHROPIC_API_KEY=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 AWS_REGION=us-east-1
-TWILIO_ACCOUNT_SID=your-sid-here
-TWILIO_AUTH_TOKEN=your-token-here
-TWILIO_PHONE_NUMBER=+1XXXXXXXXXX
-TWILIO_MESSAGING_SERVICE_SID=your-sid-here
-RESEARCHER_USERNAME=your-username
-RESEARCHER_PASSWORD=your-password
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=
+TWILIO_MESSAGING_SERVICE_SID=
+RESEARCHER_USERNAME=
+RESEARCHER_PASSWORD=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+EPIC_CLIENT_ID=
+EPIC_PRIVATE_KEY=
+EPIC_CLIENT_SECRET=
 ```
 
 ### Install and Run
@@ -164,63 +224,78 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Project Structure
 
 ```
-clarityai/
-├── app/
-│   ├── api/
-│   │   ├── generate/route.ts    # Two-layer HIPAA pipeline + Claude transformation
-│   │   ├── viewer/route.ts      # Family update storage and retrieval
-│   │   ├── sms/route.ts         # Twilio SMS delivery
-│   │   ├── auth/route.ts        # Researcher credential validation
-│   │   └── chat/route.ts        # AI chat assistant
-│   ├── page.tsx                 # Main app — state management and routing
-│   └── globals.css
-├── components/
-│   ├── DoctorPanel.tsx          # Clinical input form + access code + SMS
-│   ├── MessageCards.tsx         # Three message versions + research ratings
-│   ├── FamilyViewer.tsx         # Family update feed + clinical details
-│   ├── FamilyChat.tsx           # AI chat assistant widget
-│   ├── Dashboard.tsx            # Research charts and data table
-│   └── ResearcherAuth.tsx       # WebAuthn + password authentication
-└── lib/
-    └── anthropic.ts             # Anthropic client singleton
+app/
+  page.tsx                    # Main app — tabs, state, patient session
+  view/page.tsx               # Standalone family viewer page
+  study/page.tsx              # Self-administered research study
+  api/
+    generate/route.ts         # Two-layer HIPAA pipeline + Claude transformation
+    viewer/route.ts           # File-based update storage (.updates.json)
+    sms/route.ts              # Twilio SMS delivery
+    auth/route.ts             # Researcher credential validation
+    chat/route.ts             # AI chat assistant
+    study/route.ts            # Supabase study response storage
+    epic/
+      auth/route.ts           # Epic JWT RS384 authentication
+      patient/route.ts        # Epic FHIR patient search + 8-parallel data fetch
+components/
+  DoctorPanel.tsx             # Patient-first flow: Epic search → form
+  EpicPatientSearch.tsx       # Three-step patient search with results list
+  MessageCards.tsx            # Research study rating cards
+  FamilyViewer.tsx            # Family feed + SMS opt-in + clinical reference panel
+  FamilyChat.tsx              # Floating AI chat assistant
+  Dashboard.tsx               # Supabase study data, bar charts, group breakdowns
+  ResearcherAuth.tsx          # WebAuthn Touch ID + password fallback
+  StudyFlow.tsx               # Full self-administered study (6 steps)
+lib/
+  anthropic.ts                # Anthropic client singleton
+public/
+  epic-public-key.json        # JWK Set for Epic JWT verification (non-production)
+  epic-public-key-prod.json   # JWK Set for Epic JWT verification (production)
+  privacy.html                # Privacy policy (Twilio compliance)
+  terms.html                  # Terms of service (Twilio compliance)
 ```
 
 ---
 
 ## Security & Ethics
 
-**De-identification:** All clinical input passes through a two-layer PHI detection pipeline before any message transformation. AWS Comprehend Medical handles primary detection; Claude performs a secondary pass for relative dates and implicit identifiers. No raw PHI is stored or transmitted.
+**De-identification:** All clinical input passes through a two-layer PHI detection pipeline before message transformation. AWS Comprehend Medical handles primary detection. Claude performs a secondary pass for relative dates and implicit identifiers. A medical abbreviation whitelist prevents false positives on terms like ICU, ER, INR, and WBC.
 
 **Research ethics:**
 - All scenarios are fictional — no real patient data used
-- Participants are informed of the AI-generated nature of messages after rating
-- No personally identifiable information collected beyond a random participant ID
-- Data stored locally and exported as anonymous CSV
+- Participants informed of AI-generated nature after rating (debrief)
+- No PII collected — random participant IDs only
+- Data stored in Supabase, exportable as anonymous CSV
 
 **AI guardrails:** The family chat assistant is explicitly instructed to never provide medical advice, never assess severity, and always redirect clinical questions to the care team.
 
-**Authentication:** The research dashboard is protected by WebAuthn biometric authentication using the Web Authentication API standard. Biometric data never leaves the device — authentication uses a challenge-response cryptographic protocol via the device's Secure Enclave.
+**Authentication:** Dashboard protected by WebAuthn biometric authentication. Biometric data never leaves the device — authentication uses a challenge-response cryptographic protocol via the device's Secure Enclave.
 
 **Limitations:**
-- Updates currently stored in server memory (file-based in development) — a production system would use an encrypted persistent database
-- Access code system does not currently implement rate limiting on failed attempts
-- Relative temporal references (e.g. "tomorrow morning") may not be caught by Comprehend Medical and rely on Claude's secondary pass
-- Sample size of 15–30 participants limits statistical generalizability
+- Updates stored file-based in development — production would use encrypted persistent database
+- Access code system does not implement rate limiting on failed attempts
+- Relative temporal references may not be caught by Comprehend Medical
+- Epic integration currently in sandbox — production requires App Orchard approval
+- Study sample size of 20–30 limits statistical generalizability
 
 ---
 
 ## Future Work
 
-- Persistent database (Supabase) for production deployment
-- Patient session management — one permanent code per patient across shifts
-- Family account creation for multi-device access
+- Epic App Orchard approval for hospital deployment
+- SMART on FHIR launch handler for embedded Epic workflow
+- Patient session persistence in Supabase (one permanent code per patient)
 - Rate limiting on access code entry attempts
-- SMS notification on new update arrival (not just initial code delivery)
-- AWS SNS migration for SMS at production scale
-- IRB approval process for formal clinical research
+- SMS notification on each new update (not just initial code delivery)
+- IRB approval for formal clinical research publication
+- Stripe payments for hospital subscription billing
+- Multi-department support with role-based access
 
 ---
 
 ## Author
 
 Built by Anyssa Patel as an independent research project.
+
+Background: Frontend software developer at TSPi, neuroscience undergraduate, coding bootcamp graduate. ClarityAI represents the intersection of clinical domain knowledge, full-stack engineering, and applied AI research.
