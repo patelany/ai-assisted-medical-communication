@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 
 const EPIC_AUTH_URL =
   "https://fhir.epic.com/interconnect-fhir-oauth/oauth2/authorize";
@@ -20,8 +20,20 @@ const SCOPES = [
   "user/MedicationRequest.read",
 ].join(" ");
 
+function generateCodeVerifier(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return createHash("sha256")
+    .update(verifier)
+    .digest("base64url");
+}
+
 export async function GET(request: NextRequest) {
   const state = randomBytes(32).toString("hex");
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -30,6 +42,8 @@ export async function GET(request: NextRequest) {
     scope: SCOPES,
     state,
     aud: "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4",
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
 
   const authUrl = `${EPIC_AUTH_URL}?${params.toString()}`;
@@ -37,13 +51,21 @@ export async function GET(request: NextRequest) {
   console.log("=== EPIC AUTH DEBUG ===");
   console.log("CLIENT_ID:", CLIENT_ID);
   console.log("REDIRECT_URI:", REDIRECT_URI);
-  console.log("SCOPES:", SCOPES);
   console.log("FULL URL:", authUrl);
   console.log("======================");
 
   const response = NextResponse.redirect(authUrl);
 
+  // Store state and code verifier in httpOnly cookies
   response.cookies.set("epic_oauth_state", state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 10,
+    path: "/",
+  });
+
+  response.cookies.set("epic_code_verifier", codeVerifier, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
