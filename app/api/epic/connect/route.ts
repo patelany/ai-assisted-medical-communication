@@ -22,26 +22,33 @@ const SCOPES = [
 ].join(" ");
 
 export async function GET(request: NextRequest) {
-  // Generate state parameter to prevent CSRF on the OAuth flow
   const state = randomBytes(32).toString("hex");
 
-  // Store state in a cookie for verification on callback
-  const response = NextResponse.redirect(
-    `${EPIC_AUTH_URL}?` +
-      new URLSearchParams({
-        response_type: "code",
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
-        scope: SCOPES,
-        state,
-      }).toString()
-  );
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    state,
+    aud: "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4",
+  });
+
+  const authUrl = `${EPIC_AUTH_URL}?${params.toString()}`;
+
+  console.log("=== EPIC AUTH DEBUG ===");
+  console.log("CLIENT_ID:", CLIENT_ID);
+  console.log("REDIRECT_URI:", REDIRECT_URI);
+  console.log("SCOPES:", SCOPES);
+  console.log("FULL URL:", authUrl);
+  console.log("======================");
+
+  const response = NextResponse.redirect(authUrl);
 
   response.cookies.set("epic_oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 10, // 10 minutes
+    maxAge: 60 * 10,
     path: "/",
   });
 
