@@ -10,7 +10,6 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/epic/callback`;
 const SCOPES = [
   "openid",
   "fhirUser",
-  "launch/practitioner",
   "Patient.read",
   "Observation.read",
   "Condition.read",
