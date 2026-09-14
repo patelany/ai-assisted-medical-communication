@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccessToken } from "../auth/route";
 
 const EPIC_FHIR_BASE =
   "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
@@ -92,7 +91,13 @@ export async function GET(request: NextRequest) {
     const input = request.nextUrl.searchParams.get("patientId");
     const searchQuery = request.nextUrl.searchParams.get("search");
 
-    const token = await getAccessToken();
+    const token = request.cookies.get("epic_access_token")?.value;
+    if (!token) {
+      return NextResponse.json(
+        { error: "Not connected to Epic. Please connect first." },
+        { status: 401 }
+      );
+    }
 
     // SEARCH MODE — returns list of matching patients
     if (searchQuery) {
