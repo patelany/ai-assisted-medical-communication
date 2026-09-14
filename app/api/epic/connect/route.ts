@@ -10,14 +10,15 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/epic/callback`;
 const SCOPES = [
   "openid",
   "fhirUser",
-  "patient/Patient.read",
-  "patient/Observation.read",
-  "patient/Condition.read",
-  "patient/DocumentReference.read",
-  "patient/ServiceRequest.read",
-  "patient/RelatedPerson.read",
-  "patient/Encounter.read",
-  "patient/MedicationRequest.read",
+  "launch/practitioner",
+  "Patient.read",
+  "Observation.read",
+  "Condition.read",
+  "DocumentReference.read",
+  "ServiceRequest.read",
+  "RelatedPerson.read",
+  "Encounter.read",
+  "MedicationRequest.read",
 ].join(" ");
 
 export async function GET(request: NextRequest) {
@@ -33,7 +34,6 @@ export async function GET(request: NextRequest) {
         redirect_uri: REDIRECT_URI,
         scope: SCOPES,
         state,
-        aud: "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4",
       }).toString()
   );
 
