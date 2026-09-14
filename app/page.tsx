@@ -8,7 +8,9 @@ import ResearcherAuth from "@/components/ResearcherAuth";
 import DoctorAuth from "@/components/DoctorAuth";
 
 function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return (100000 + (array[0] % 900000)).toString();
 }
 
 const TABS = [
@@ -40,8 +42,13 @@ export default function Home() {
 
     // Check if doctor is already authenticated
     const authed = localStorage.getItem("clarityai_doctor_authed");
-    if (authed === "true") {
+    const authedAt = localStorage.getItem("clarityai_doctor_authed_at");
+    const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+    if (authed === "true" && authedAt && Date.now() - parseInt(authedAt) < EIGHT_HOURS) {
       setDoctorAuthed(true);
+    } else {
+      localStorage.removeItem("clarityai_doctor_authed");
+      localStorage.removeItem("clarityai_doctor_authed_at");
     }
   }, []);
 

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rateLimit";
+import { validateCSRF } from "@/lib/csrf";
+import { auditLog } from "@/lib/auditLog";
 import fs from "fs";
 import path from "path";
 
@@ -25,33 +28,90 @@ function writeUpdates(updates: Record<string, any[]>) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { code, update } = body;
+  try {
+    const ip =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+    const { success } = rateLimit(`viewer-post:${ip}`, 20, 60 * 1000);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests." },
+        { status: 429 }
+      );
+    }
 
-  const updates = readUpdates();
+    // CSRF protection
+    if (!validateCSRF(request)) {
+      return NextResponse.json(
+        { error: "Invalid request origin." },
+        { status: 403 }
+      );
+    }
 
-  if (!updates[code]) {
-    updates[code] = [];
+    const body = await request.json();
+    const { code, update } = body;
+
+    if (!code || !update) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const updates = readUpdates();
+
+    if (!updates[code]) {
+      updates[code] = [];
+    }
+
+    updates[code].unshift(update);
+    writeUpdates(updates);
+
+    await auditLog("update_delivered", { code: code.substring(0, 3) + "***" }, ip);
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error("Viewer POST error:", e);
+    return NextResponse.json(
+      { error: "Failed to save update" },
+      { status: 500 }
+    );
   }
-
-  updates[code].unshift(update);
-  writeUpdates(updates);
-
-  return NextResponse.json({ success: true });
 }
 
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get("code");
+  try {
+    const ip =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+    const { success } = rateLimit(`viewer-get:${ip}`, 30, 60 * 1000);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests." },
+        { status: 429 }
+      );
+    }
 
-  if (!code) {
-    return NextResponse.json({ updates: [] });
+    const code = request.nextUrl.searchParams.get("code");
+
+    if (!code) {
+      return NextResponse.json({ updates: [] });
+    }
+
+    const updates = readUpdates();
+
+    if (!updates[code]) {
+      return NextResponse.json({ updates: [] });
+    }
+
+    await auditLog("family_viewer_accessed", { code: code.substring(0, 3) + "***" }, ip);
+    return NextResponse.json({ updates: updates[code] });
+  } catch (e) {
+    console.error("Viewer GET error:", e);
+    return NextResponse.json(
+      { error: "Failed to read updates" },
+      { status: 500 }
+    );
   }
-
-  const updates = readUpdates();
-
-  if (!updates[code]) {
-    return NextResponse.json({ updates: [] });
-  }
-
-  return NextResponse.json({ updates: updates[code] });
 }

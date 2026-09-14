@@ -33,6 +33,11 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     }
   }, []);
 
+  const setAuthSession = () => {
+    localStorage.setItem("clarityai_doctor_authed", "true");
+    localStorage.setItem("clarityai_doctor_authed_at", Date.now().toString());
+  };
+
   const handleBiometric = async () => {
     setLoading(true);
     setError("");
@@ -64,7 +69,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       };
 
       await navigator.credentials.get({ publicKey: assertionOptions });
-      localStorage.setItem("clarityai_doctor_authed", "true");
+      setAuthSession();
       onAuthenticated();
     } catch (e: any) {
       if (e.name === "NotAllowedError") {
@@ -96,7 +101,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem("clarityai_doctor_authed", "true");
+        setAuthSession();
         if (biometricSupported && !biometricRegistered) {
           setStep("register-biometric");
         } else {
@@ -166,7 +171,6 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     <div className="flex-1 flex items-center justify-center bg-stone-100 p-6">
       <div className="w-full max-w-md">
 
-        {/* HEADER */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">⚕️</div>
           <h1 className="text-2xl font-serif text-gray-800 mb-2">ClarityAI</h1>
@@ -177,7 +181,6 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
 
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
 
-          {/* TOUCH ID STEP */}
           {step === "biometric" && (
             <>
               <div className="text-center mb-6">
@@ -222,7 +225,6 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
             </>
           )}
 
-          {/* PASSWORD STEP */}
           {step === "password" && (
             <>
               <div className="text-center mb-6">
@@ -296,7 +298,6 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
             </>
           )}
 
-          {/* REGISTER BIOMETRIC STEP */}
           {step === "register-biometric" && (
             <>
               <div className="text-center mb-6">
