@@ -10,14 +10,14 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/epic/callback`;
 const SCOPES = [
   "openid",
   "fhirUser",
-  "Patient.read",
-  "Observation.read",
-  "Condition.read",
-  "DocumentReference.read",
-  "ServiceRequest.read",
-  "RelatedPerson.read",
-  "Encounter.read",
-  "MedicationRequest.read",
+  "user/Patient.read",
+  "user/Observation.read",
+  "user/Condition.read",
+  "user/DocumentReference.read",
+  "user/ServiceRequest.read",
+  "user/RelatedPerson.read",
+  "user/Encounter.read",
+  "user/MedicationRequest.read",
 ].join(" ");
 
 export async function GET(request: NextRequest) {
