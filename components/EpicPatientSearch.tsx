@@ -30,7 +30,7 @@ interface EpicPatientSearchProps {
   onManualEntry: (patientId: string, patientName: string) => void;
 }
 
-type Step = "connect" | "search" | "results" | "confirm";
+type Step = "connect" | "search" | "results" | "confirm" | "manual";
 
 export default function EpicPatientSearch({
   onPatientFound,
@@ -44,6 +44,13 @@ export default function EpicPatientSearch({
   const [selectedPatient, setSelectedPatient] = useState<SearchResult | null>(null);
   const [loadingPatient, setLoadingPatient] = useState(false);
   const [connectError, setConnectError] = useState("");
+
+  // Manual entry state
+  const [manualName, setManualName] = useState("");
+  const [manualMrn, setManualMrn] = useState("");
+  const [manualContact, setManualContact] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualError, setManualError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,9 +150,44 @@ export default function EpicPatientSearch({
     setLoadingPatient(false);
   };
 
-  const handleManual = () => {
+  const handleManualFromConfirm = () => {
     if (!selectedPatient) return;
     onManualEntry(selectedPatient.id, selectedPatient.name);
+  };
+
+  const handleManualSubmit = () => {
+    if (!manualName.trim()) {
+      setManualError("Patient name is required.");
+      return;
+    }
+    setManualError("");
+
+    // Build a minimal patient-like object for manual entry
+    const patientId = manualMrn.trim() || `MANUAL-${Date.now()}`;
+
+    // Pass emergency contact info through the onPatientFound callback
+    // so DoctorPanel can pre-fill the phone number
+    if (manualContact.trim() || manualPhone.trim()) {
+      onPatientFound({
+        patientId,
+        patientName: manualName.trim(),
+        admissionDate: null,
+        location: null,
+        emergencyContact: {
+          name: manualContact.trim() || "Emergency Contact",
+          phone: manualPhone.trim(),
+        },
+        suggestedStatus: "stable",
+        suggestedAction: "",
+        suggestedReason: "",
+        vitals: [],
+        labs: [],
+        conditions: [],
+        orders: [],
+      });
+    } else {
+      onManualEntry(patientId, manualName.trim());
+    }
   };
 
   // CONNECT
@@ -176,9 +218,7 @@ export default function EpicPatientSearch({
             className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl text-left hover:border-gray-300 hover:bg-gray-50 transition-all group"
           >
             <div className="w-10 h-10 rounded-lg bg-[#e31837] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-xs tracking-tight">
-                epic
-              </span>
+              <span className="text-white font-bold text-xs tracking-tight">epic</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">Epic</p>
@@ -186,12 +226,7 @@ export default function EpicPatientSearch({
                 MyChart · Hyperspace · FHIR R4
               </p>
             </div>
-            <svg
-              className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -203,13 +238,9 @@ export default function EpicPatientSearch({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">Cerner</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Oracle Health · FHIR R4
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">Oracle Health · FHIR R4</p>
             </div>
-            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">
-              Coming soon
-            </span>
+            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">Coming soon</span>
           </div>
 
           {/* ATHENAHEALTH — coming soon */}
@@ -219,13 +250,9 @@ export default function EpicPatientSearch({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">athenahealth</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                athenaOne · FHIR R4
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">athenaOne · FHIR R4</p>
             </div>
-            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">
-              Coming soon
-            </span>
+            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">Coming soon</span>
           </div>
 
           {/* MEDITECH — coming soon */}
@@ -235,24 +262,15 @@ export default function EpicPatientSearch({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">MEDITECH</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Expanse · FHIR R4
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">Expanse · FHIR R4</p>
             </div>
-            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">
-              Coming soon
-            </span>
+            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-2 py-1 flex-shrink-0">Coming soon</span>
           </div>
         </div>
 
         {/* SECURITY NOTE */}
         <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-          <svg
-            className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
           <p className="text-xs text-emerald-700 leading-relaxed">
@@ -261,9 +279,129 @@ export default function EpicPatientSearch({
           </p>
         </div>
 
-        <p className="text-xs text-gray-300 text-center">
+        {/* MANUAL ENTRY DIVIDER */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-100" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+
+        <button
+          onClick={() => setStep("manual")}
+          className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+        >
+          Enter patient details manually
+        </button>
+
+        <p className="text-xs text-gray-300 text-center -mt-2">
           All connections use FHIR R4 · SMART on FHIR · OAuth 2.0 with PKCE
         </p>
+      </div>
+    );
+  }
+
+  // MANUAL ENTRY
+  if (step === "manual") {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <button
+            onClick={() => setStep("connect")}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-4"
+          >
+            ← Back
+          </button>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1.5">
+            Patient details
+          </h2>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            Enter the patient's information manually. You'll fill in the
+            clinical notes on the next screen.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* PATIENT NAME */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray-500">
+              Patient name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={manualName}
+              onChange={(e) => {
+                setManualName(e.target.value);
+                setManualError("");
+              }}
+              placeholder="Full name"
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
+            />
+          </div>
+
+          {/* MRN */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray-500">
+              MRN or patient ID
+              <span className="text-gray-300 font-normal ml-1">optional</span>
+            </label>
+            <input
+              type="text"
+              value={manualMrn}
+              onChange={(e) => setManualMrn(e.target.value)}
+              placeholder="203713"
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors font-mono"
+            />
+          </div>
+
+          {/* DIVIDER */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-xs text-gray-300">Emergency contact</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+
+          {/* CONTACT NAME */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray-500">
+              Contact name
+              <span className="text-gray-300 font-normal ml-1">optional</span>
+            </label>
+            <input
+              type="text"
+              value={manualContact}
+              onChange={(e) => setManualContact(e.target.value)}
+              placeholder="Sarah Johnson"
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
+            />
+          </div>
+
+          {/* CONTACT PHONE */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-gray-500">
+              Contact phone
+              <span className="text-gray-300 font-normal ml-1">optional · used to send access code</span>
+            </label>
+            <input
+              type="tel"
+              value={manualPhone}
+              onChange={(e) => setManualPhone(e.target.value)}
+              placeholder="(555) 000-0000"
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
+            />
+          </div>
+        </div>
+
+        {manualError && (
+          <p className="text-xs text-red-500">{manualError}</p>
+        )}
+
+        <button
+          onClick={handleManualSubmit}
+          disabled={!manualName.trim()}
+          className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+        >
+          Continue
+        </button>
       </div>
     );
   }
@@ -284,9 +422,7 @@ export default function EpicPatientSearch({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-xs text-gray-400">
-              Epic connected
-            </span>
+            <span className="text-xs text-gray-400">Epic connected</span>
           </div>
           <button
             onClick={() => setStep("connect")}
@@ -329,6 +465,19 @@ export default function EpicPatientSearch({
             <p className="text-xs text-red-500">{searchError}</p>
           )}
         </div>
+
+        <div className="flex items-center gap-3 pt-2">
+          <div className="flex-1 h-px bg-gray-100" />
+          <span className="text-xs text-gray-300">or</span>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+
+        <button
+          onClick={() => setStep("manual")}
+          className="text-xs text-center text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Enter patient details manually
+        </button>
       </div>
     );
   }
@@ -365,19 +514,13 @@ export default function EpicPatientSearch({
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 {patient.mrn && (
-                  <span className="text-xs text-gray-400">
-                    MRN {patient.mrn}
-                  </span>
+                  <span className="text-xs text-gray-400">MRN {patient.mrn}</span>
                 )}
                 {patient.dob && (
-                  <span className="text-xs text-gray-400">
-                    DOB {patient.dob}
-                  </span>
+                  <span className="text-xs text-gray-400">DOB {patient.dob}</span>
                 )}
                 {patient.gender && (
-                  <span className="text-xs text-gray-400 capitalize">
-                    {patient.gender}
-                  </span>
+                  <span className="text-xs text-gray-400 capitalize">{patient.gender}</span>
                 )}
               </div>
             </button>
@@ -409,19 +552,13 @@ export default function EpicPatientSearch({
 
         <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
           <p className="text-xs text-gray-400 mb-1">Selected patient</p>
-          <p className="font-semibold text-gray-900 text-sm">
-            {selectedPatient.name}
-          </p>
+          <p className="font-semibold text-gray-900 text-sm">{selectedPatient.name}</p>
           <div className="flex items-center gap-3 mt-1">
             {selectedPatient.mrn && (
-              <span className="text-xs text-gray-400">
-                MRN {selectedPatient.mrn}
-              </span>
+              <span className="text-xs text-gray-400">MRN {selectedPatient.mrn}</span>
             )}
             {selectedPatient.dob && (
-              <span className="text-xs text-gray-400">
-                DOB {selectedPatient.dob}
-              </span>
+              <span className="text-xs text-gray-400">DOB {selectedPatient.dob}</span>
             )}
           </div>
         </div>
@@ -447,7 +584,7 @@ export default function EpicPatientSearch({
           </button>
 
           <button
-            onClick={handleManual}
+            onClick={handleManualFromConfirm}
             disabled={loadingPatient}
             className="w-full bg-white text-gray-700 rounded-lg py-3 px-4 text-sm font-medium border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:cursor-not-allowed"
           >
