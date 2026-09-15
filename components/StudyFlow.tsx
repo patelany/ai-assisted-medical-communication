@@ -428,18 +428,15 @@ export default function StudyFlow() {
       });
       const data = await res.json();
       if (data.success) {
-        if (data.code) {
-          setVerifyCode(data.code);
-        }
-        if (data.alreadyVerified) {
-          setVerifyEmailHash(data.emailHash);
+        setVerifyEmailHash(data.emailHash);
+        if (data.returning) {
           setStep("returning");
-          window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
-          setVerifyCodeSent(true);
+          setStep("consent");
         }
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        setVerifyError(data.error || "Failed to send code.");
+        setVerifyError(data.error || "Failed to process email.");
       }
     } catch (e) {
       setVerifyError("Network error. Check your connection.");
@@ -695,88 +692,6 @@ export default function StudyFlow() {
     );
   }
 
-  // VERIFY EMAIL
-  if (step === "verify-email") {
-    return (
-      <div>
-        {progressBar}
-        <div className="max-w-md mx-auto py-16 px-6">
-          <div className="text-center mb-10">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Verify your email
-            </h1>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Enter your email address to receive a verification code. This ensures each person only completes the study once.
-            </p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
-            {!verifyCodeSent ? (
-              <>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-gray-500">Email address</label>
-                  <input
-                    type="email"
-                    value={verifyEmail}
-                    onChange={(e) => { setVerifyEmail(e.target.value); setVerifyError(""); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendVerifyCode()}
-                    placeholder="you@example.com"
-                    className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                  />
-                </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Your email is never stored — only a secure hash is used to prevent duplicate submissions.
-                </p>
-                <button
-                  onClick={handleSendVerifyCode}
-                  disabled={verifySending || !verifyEmail.trim()}
-                  className="w-full bg-gray-900 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {verifySending ? "Sending…" : "Send verification code"}
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-                  Code sent to {verifyEmail}. Check your inbox — it expires in 10 minutes.
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-gray-500">6-digit code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={verifyCode}
-                    onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, "")); setVerifyError(""); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
-                    placeholder="000000"
-                    className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors font-mono tracking-widest text-center text-lg"
-                  />
-                </div>
-                <button
-                  onClick={handleVerifyCode}
-                  disabled={verifyChecking || verifyCode.length !== 6}
-                  className="w-full bg-gray-900 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {verifyChecking ? "Verifying…" : "Verify & continue"}
-                </button>
-                <button
-                  onClick={() => { setVerifyCodeSent(false); setVerifyCode(""); setVerifyError(""); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors text-center cursor-pointer"
-                >
-                  Use a different email
-                </button>
-              </>
-            )}
-            {verifyError && (
-              <p className="text-xs text-red-500 text-center">{verifyError}</p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // RETURNING PARTICIPANT
   if (step === "returning") {

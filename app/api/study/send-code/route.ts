@@ -43,69 +43,45 @@ export async function POST(request: NextRequest) {
     const emailHash = hashEmail(email);
 
     // Check if already completed
-    const { data: existing } = await supabase
+    const { data: completed } = await supabase
       .from("study_completed_emails")
       .select("id")
       .eq("email_hash", emailHash)
       .single();
 
-    if (existing) {
+    if (completed) {
       return NextResponse.json(
         { error: "This email has already been used to complete the study. Each person may only participate once." },
         { status: 409 }
       );
     }
 
-        // Check if already verified (returning participant)
-    const { data: alreadyVerified } = await supabase
-      .from("study_email_verifications")
+    // Check if returning participant with saved session
+    const { data: session } = await supabase
+      .from("study_sessions")
       .select("id")
       .eq("email_hash", emailHash)
-      .eq("verified", true)
       .single();
 
-    if (alreadyVerified) {
-      return NextResponse.json({ success: true, alreadyVerified: true, emailHash });
-    }
-
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    // Delete any existing unverified codes for this email
+    // Mark email as verified so they can return
     await supabase
       .from("study_email_verifications")
-      .delete()
-      .eq("email_hash", emailHash);
-
-    // Store code
-    const { error: insertError } = await supabase
-      .from("study_email_verifications")
-      .insert({
+      .upsert({
         email_hash: emailHash,
-        code,
-        expires_at: expiresAt,
-        verified: false,
-      });
+        code: "bypass",
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        verified: true,
+      }, { onConflict: "email_hash" });
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to generate code. Try again." },
-        { status: 500 }
-      );
-    }
-
-    // Skip email for now — return code directly
-    // TODO: Add domain to Resend and re-enable email sending
-    console.log(`Study verification code for ${email}: ${code}`);
-
-
-    return NextResponse.json({ success: true, code });
+    return NextResponse.json({
+      success: true,
+      emailHash,
+      returning: !!session,
+    });
   } catch (error) {
     console.error("Send code error:", error);
     return NextResponse.json(
-      { error: "Failed to send code." },
+      { error: "Failed to process email." },
       { status: 500 }
     );
   }
