@@ -139,6 +139,20 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
     return () => clearInterval(interval);
   }, [lockedUntil]);
 
+  //check for stored code in localStorage
+    useEffect(() => {
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    const stored = localStorage.getItem("clarityai_viewer_code");
+    const storedAt = localStorage.getItem("clarityai_viewer_code_at");
+    if (stored && storedAt && Date.now() - parseInt(storedAt) < SEVEN_DAYS) {
+      setEnteredCode(stored);
+      setUnlocked(true);
+      const storedDigits = stored.split("");
+      setDigits(storedDigits);
+      setCode(stored);
+    }
+  }, []);
+
   // Poll for updates
   useEffect(() => {
     if (!unlocked) return;
@@ -196,9 +210,13 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         setUnlocked(true);
         setError("");
         setAttempts(0);
+        localStorage.setItem("clarityai_viewer_code", trimmed);
+        localStorage.setItem("clarityai_viewer_code_at", Date.now().toString());
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
+        localStorage.setItem("clarityai_viewer_code", trimmed);
+        localStorage.setItem("clarityai_viewer_code_at", Date.now().toString());
         if (newAttempts >= MAX_ATTEMPTS) {
           const lockUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
           setLockedUntil(lockUntil);
@@ -210,6 +228,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         }
       }
       return;
+      
     }
 
     const res = await fetch(`/api/viewer?code=${trimmed}`);
@@ -333,85 +352,6 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
             {MAX_ATTEMPTS - attempts} attempt{MAX_ATTEMPTS - attempts !== 1 ? "s" : ""} remaining
           </p>
         )}
-
-        <div className="flex items-center gap-3 my-8">
-          <div className="flex-1 h-px bg-gray-100" />
-          <span className="text-xs text-gray-400">or</span>
-          <div className="flex-1 h-px bg-gray-100" />
-        </div>
-
-        {/* SMS REQUEST */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-sm font-medium text-gray-900 mb-1">
-            Get your code via text
-          </p>
-          <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-            Enter your phone number and we'll send your access code. One
-            message only.
-          </p>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-gray-500">
-                Phone number
-              </label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                  setSmsSent(false);
-                  setSmsError("");
-                }}
-                placeholder="(555) 000-0000"
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-              />
-            </div>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={smsConsent}
-                onChange={(e) => setSmsConsent(e.target.checked)}
-                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-gray-700"
-              />
-              <span className="text-xs text-gray-400 leading-relaxed">
-                I agree to receive a one-time SMS access code from ClarityAI.
-                Message frequency: 1 message per request. Msg &amp; data rates
-                may apply. Reply STOP to cancel.{" "}
-                <a href="/terms.html" target="_blank" rel="noreferrer" className="text-gray-600 underline">
-                  Terms
-                </a>{" "}
-                and{" "}
-                <a href="/privacy.html" target="_blank" rel="noreferrer" className="text-gray-600 underline">
-                  Privacy Policy
-                </a>.
-              </span>
-            </label>
-
-            <button
-              onClick={handleRequestCode}
-              disabled={smsSending || !phoneNumber.trim() || !smsConsent || smsSent}
-              className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              {smsSending ? "Sending..." : smsSent ? "Code sent — check your phone" : "Send my access code"}
-            </button>
-
-            {smsError && (
-              <p className="text-xs text-red-500">{smsError}</p>
-            )}
-
-            {smsSent && (
-              <p className="text-xs text-emerald-600 leading-relaxed">
-                Code sent. Enter it in the fields above to view updates.
-              </p>
-            )}
-
-            <p className="text-xs text-gray-300 text-center">
-              Your number will never be shared or used for marketing.
-            </p>
-          </div>
-        </div>
       </div>
     );
   }
@@ -429,7 +369,7 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
           </p>
         </div>
         <button
-          onClick={() => {
+            onClick={() => {
             setUnlocked(false);
             setCode("");
             setDigits(["", "", "", "", "", ""]);
@@ -437,6 +377,8 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
             setUpdates([]);
             setExpandedIndex(null);
             setAttempts(0);
+            localStorage.removeItem("clarityai_viewer_code");
+            localStorage.removeItem("clarityai_viewer_code_at");
           }}
           className="text-xs text-gray-400 hover:text-gray-600 transition-colors border border-gray-200 rounded-lg px-3 py-1.5 hover:border-gray-300"
         >

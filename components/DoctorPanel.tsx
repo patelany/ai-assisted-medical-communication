@@ -1,7 +1,6 @@
 "use client";
-
-import { useState } from "react";
 import EpicPatientSearch from "@/components/EpicPatientSearch";
+import { useState, useEffect } from "react";
 
 const STATUS_OPTIONS = [
   { value: "stable", label: "Stable", color: "bg-emerald-400" },
@@ -40,6 +39,7 @@ export default function DoctorPanel({
   const [smsSent, setSmsSent] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
   const [smsError, setSmsError] = useState("");
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   const [patientId, setPatientId] = useState("");
@@ -55,27 +55,24 @@ export default function DoctorPanel({
   const [epicData, setEpicData] = useState<any>(null);
   const [useAutoFill, setUseAutoFill] = useState(false);
 
-  const handleSubmit = () => {
-    if (!action.trim()) return;
-    onGenerate({ status, action, change, reason, patientName, patientId });
-    setStatus("stable");
-    setAction("");
-    setChange("");
-    setReason("");
-    setNoChange(false);
-    setNoReason(false);
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(
-      `Hi! You can follow updates about our loved one here:\n\nSite: ai-assisted-medical-communication.vercel.app/view\nCode: ${accessCode}\n\nNo account needed — just enter the code.`
-    );
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    useEffect(() => {
+    const stored = localStorage.getItem("clarityai_patient");
+    if (stored) {
+      try {
+        const patient = JSON.parse(stored);
+        if (patient.isManual) {
+          handleManualEntry(patient.patientId, patient.patientName);
+        } else {
+          handlePatientFound(patient);
+        }
+      } catch (e) {
+        localStorage.removeItem("clarityai_patient");
+      }
+    }
+  }, []);
 
   const handleSendSms = async () => {
-    if (!phoneNumber.trim()) return;
+    if (!phoneNumber.trim() || !smsOptIn) return;
     setSmsSending(true);
     setSmsError("");
     try {
@@ -87,7 +84,6 @@ export default function DoctorPanel({
       const data = await res.json();
       if (data.success) {
         setSmsSent(true);
-        setPhoneNumber("");
       } else {
         setSmsError(data.error || "Failed to send. Try again.");
       }
@@ -95,6 +91,30 @@ export default function DoctorPanel({
       setSmsError("Network error. Check your connection.");
     }
     setSmsSending(false);
+  };
+
+  const handleSubmit = () => {
+    if (!action.trim()) return;
+    onGenerate({ status, action, change, reason, patientName, patientId });
+
+    if (smsOptIn && phoneNumber.trim() && !smsSent) {
+      handleSendSms();
+    }
+
+    setStatus("stable");
+    setAction("");
+    setChange("");
+    setReason("");
+    setNoChange(false);
+    setNoReason(false);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(
+      `Hi! You can follow updates about your loved one here:\n\nSite: https://ai-assisted-medical-communication.vercel.app/view\nCode: ${accessCode}\n\nNo account needed — just enter the code.`
+    );
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handlePatientFound = (patient: any) => {
@@ -109,8 +129,14 @@ export default function DoctorPanel({
     onPatientLoaded(patient.patientName || "");
     if (patient.emergencyContact) {
       setEmergencyContact(patient.emergencyContact);
-      setPhoneNumber(patient.emergencyContact.phone || "");
     }
+    if (patient.patientPhone) {
+      setPhoneNumber(patient.patientPhone);
+    } else if (patient.emergencyContact?.phone) {
+      setPhoneNumber(patient.emergencyContact.phone);
+    }
+    // Persist patient session
+    localStorage.setItem("clarityai_patient", JSON.stringify(patient));
   };
 
   const handleManualEntry = (id: string, name: string) => {
@@ -120,6 +146,8 @@ export default function DoctorPanel({
     setIsManualEntry(true);
     setUseAutoFill(false);
     onPatientLoaded(name || id);
+    // Persist patient session
+    localStorage.setItem("clarityai_patient", JSON.stringify({ patientId: id, patientName: name, isManual: true }));
   };
 
   const handleAutoFill = () => {
@@ -150,19 +178,27 @@ export default function DoctorPanel({
     setStatus("stable");
     setNoChange(false);
     setNoReason(false);
+    setSmsOptIn(false);
+    setSmsSent(false);
+    setSmsError("");
     onPatientCleared();
+    localStorage.removeItem("clarityai_patient");
   };
 
   // FULL SCREEN PATIENT SEARCH
   if (!patientLoaded) {
     return (
       <div className="flex-1 flex bg-gray-50">
-
         {/* LEFT PANEL */}
         <div className="hidden lg:flex flex-col justify-between w-80 min-w-80 bg-white border-r border-gray-100 p-10">
           <div>
             <div className="flex items-center gap-3 mb-12">
-              <span className="text-2xl leading-none">⚕️</span>
+              <span
+                className="text-2xl text-gray-900"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                ⚕
+              </span>
               <span className="font-serif text-lg text-gray-900">ClarityAI</span>
             </div>
 
@@ -193,12 +229,10 @@ export default function DoctorPanel({
             </div>
           </div>
 
-          <p className="text-xs text-gray-300">
-            Medical Communication Platform
-          </p>
+          <p className="text-xs text-gray-300">Medical Communication Platform</p>
         </div>
 
-        {/* RIGHT — SEARCH CONTENT */}
+        {/* RIGHT — SEARCH */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm">
             <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm">
@@ -209,7 +243,6 @@ export default function DoctorPanel({
             </div>
           </div>
         </div>
-
       </div>
     );
   }
@@ -220,7 +253,7 @@ export default function DoctorPanel({
       {/* MOBILE TOGGLE */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="lg:hidden fixed bottom-6 left-6 z-50 bg-gray-900 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-sm font-medium"
+        className="lg:hidden fixed bottom-6 left-6 z-50 bg-gray-900 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-sm font-medium cursor-pointer"
       >
         {collapsed ? "+" : "✕"}
       </button>
@@ -238,12 +271,10 @@ export default function DoctorPanel({
       >
         {/* MOBILE CLOSE */}
         <div className="flex items-center justify-between md:hidden">
-          <span className="text-sm font-medium text-gray-900">
-            Clinical Input
-          </span>
+          <span className="text-sm font-medium text-gray-900">Clinical Input</span>
           <button
             onClick={() => setCollapsed(true)}
-            className="text-gray-400 hover:text-gray-600 text-sm"
+            className="text-gray-400 hover:text-gray-600 text-sm cursor-pointer"
           >
             Close
           </button>
@@ -264,6 +295,11 @@ export default function DoctorPanel({
               <p className="font-semibold text-gray-900 text-sm">
                 {patientName || "Unknown Patient"}
               </p>
+              {patientId && (
+                <p className="text-xs text-gray-400 mt-0.5 font-mono">
+                  MRN {patientId}
+                </p>
+              )}
               {admissionDate && (
                 <p className="text-xs text-gray-400 mt-0.5">
                   Admitted {new Date(admissionDate).toLocaleDateString()}
@@ -280,7 +316,7 @@ export default function DoctorPanel({
             </div>
             <button
               onClick={handleSwitchPatient}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 pt-0.5"
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 pt-0.5 cursor-pointer"
             >
               Switch
             </button>
@@ -289,7 +325,7 @@ export default function DoctorPanel({
           {!isManualEntry && epicData && !useAutoFill && (
             <button
               onClick={handleAutoFill}
-              className="mt-3 w-full bg-white border border-gray-200 text-gray-700 rounded-lg py-2 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors"
+              className="mt-3 w-full bg-white border border-gray-200 text-gray-700 rounded-lg py-2 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               Auto-fill from Epic
             </button>
@@ -304,15 +340,13 @@ export default function DoctorPanel({
 
         {/* STATUS */}
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">
-            Patient status
-          </p>
+          <p className="text-xs font-medium text-gray-500 mb-2">Patient status</p>
           <div className="grid grid-cols-3 gap-1.5">
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s.value}
                 onClick={() => setStatus(s.value)}
-                className={`rounded-lg py-2 px-1 text-xs font-medium text-center transition-all flex items-center justify-center gap-1.5 ${
+                className={`rounded-lg py-2 px-1 text-xs font-medium text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   status === s.value
                     ? "bg-gray-900 text-white"
                     : "bg-gray-50 text-gray-500 hover:bg-gray-100"
@@ -327,9 +361,7 @@ export default function DoctorPanel({
 
         {/* PLANNED ACTION */}
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1.5">
-            Planned action
-          </p>
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Planned action</p>
           <textarea
             value={action}
             onChange={(e) => setAction(e.target.value)}
@@ -340,9 +372,7 @@ export default function DoctorPanel({
 
         {/* CHANGE IN PLAN */}
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1.5">
-            Change in plan
-          </p>
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Change in plan</p>
           <input
             value={noChange ? "No change in plan" : change}
             onChange={(e) => setChange(e.target.value)}
@@ -368,9 +398,7 @@ export default function DoctorPanel({
 
         {/* CLINICAL REASON */}
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1.5">
-            Clinical reason
-          </p>
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Clinical reason</p>
           <textarea
             value={noReason ? "No additional reason" : reason}
             onChange={(e) => setReason(e.target.value)}
@@ -394,13 +422,78 @@ export default function DoctorPanel({
           </label>
         </div>
 
-        {/* HIPAA NOTE */}
+         {/* HIPAA NOTE */}
         <div className="flex items-start gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
           <p className="text-xs text-gray-400 leading-relaxed">
             Patient information is automatically scanned and removed before
             any update is generated.
           </p>
+        </div>
+
+        {/* SMS CONSENT + PHONE */}
+        <div className="flex flex-col gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-700">
+              Notify family via SMS
+            </p>
+            <span className="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+              Optional
+            </span>
+          </div>
+
+          <label className="flex items-start gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={smsOptIn}
+              onChange={(e) => {
+                setSmsOptIn(e.target.checked);
+                if (!e.target.checked) {
+                  setSmsSent(false);
+                  setSmsError("");
+                }
+              }}
+              className="mt-0.5 w-4 h-4 accent-gray-700 flex-shrink-0 cursor-pointer"
+            />
+            <span className="text-xs text-gray-400 leading-relaxed group-hover:text-gray-600 transition-colors">
+              Patient or family member has consented to receive SMS updates
+            </span>
+          </label>
+
+          <div className={`transition-all duration-200 ${
+            smsOptIn ? "opacity-100" : "opacity-40"
+          }`}>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => {
+                if (!smsOptIn) return;
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                let formatted = digits;
+                if (digits.length >= 7) {
+                  formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+                } else if (digits.length >= 4) {
+                  formatted = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+                } else if (digits.length >= 1) {
+                  formatted = `(${digits}`;
+                }
+                setPhoneNumber(formatted);
+                setSmsSent(false);
+                setSmsError("");
+              }}
+              disabled={!smsOptIn}
+              placeholder="(555) 000-0000"
+              className={`w-full border rounded-lg px-3 py-2 text-xs text-gray-900 placeholder-gray-300 focus:outline-none transition-all duration-200 ${
+                smsOptIn
+                  ? "bg-white border-gray-300 focus:border-gray-400 cursor-text shadow-sm"
+                  : "bg-white border-gray-200 cursor-not-allowed"
+              }`}
+            />
+          </div>
+
+          {smsError && (
+            <p className="text-xs text-red-500">{smsError}</p>
+          )}
         </div>
 
         {/* GENERATE */}
@@ -410,7 +503,7 @@ export default function DoctorPanel({
             setCollapsed(true);
           }}
           disabled={loading || !action.trim()}
-          className="bg-gray-900 text-white rounded-lg py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+          className="bg-gray-900 text-white rounded-lg py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? "Processing..." : "Generate update"}
         </button>
@@ -422,9 +515,7 @@ export default function DoctorPanel({
           </p>
 
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-            <p className="text-xs text-gray-400 mb-2">
-              Share this code once
-            </p>
+            <p className="text-xs text-gray-400 mb-2">Share this code once</p>
             <p className="font-mono text-2xl tracking-widest text-gray-900 font-semibold">
               {accessCode}
             </p>
@@ -432,51 +523,33 @@ export default function DoctorPanel({
               ai-assisted-medical-communication.vercel.app/view
             </p>
 
-            {emergencyContact && (
-              <p className="text-xs text-emerald-600 mt-2">
-                Contact pre-filled from Epic: {emergencyContact.name}
-              </p>
-            )}
-
             <div className="mt-4 flex flex-col gap-2">
-              <p className="text-xs font-medium text-gray-500">
-                Send via SMS
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
-                    setSmsSent(false);
-                    setSmsError("");
-                  }}
-                  placeholder="(555) 000-0000"
-                  className="flex-1 bg-white border border-gray-200 rounded-lg p-2 text-xs text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-300 transition-colors"
-                />
-                <button
-                  onClick={handleSendSms}
-                  disabled={smsSending || !phoneNumber.trim() || smsSent}
-                  className="bg-gray-900 text-white rounded-lg px-3 text-xs font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  {smsSending ? "..." : smsSent ? "Sent" : "Send"}
-                </button>
-              </div>
-
-              {smsError && (
-                <p className="text-xs text-red-500">{smsError}</p>
-              )}
               {smsSent && (
-                <p className="text-xs text-emerald-600">Sent successfully.</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-emerald-600">
+                    SMS sent successfully.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSmsSent(false);
+                      setSmsError("");
+                      handleSendSms();
+                    }}
+                    disabled={smsSending}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    {smsSending ? "Sending..." : "Resend"}
+                  </button>
+                </div>
               )}
-            </div>
 
-            <button
-              onClick={handleCopy}
-              className="mt-3 w-full bg-white border border-gray-200 text-gray-600 rounded-lg py-2 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              {copied ? "Copied" : "Copy share message"}
-            </button>
+              <button
+                onClick={handleCopy}
+                className="w-full bg-white border border-gray-200 text-gray-600 rounded-lg py-2 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                {copied ? "Copied" : "Copy share message"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

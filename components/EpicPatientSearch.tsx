@@ -161,33 +161,8 @@ export default function EpicPatientSearch({
       return;
     }
     setManualError("");
-
-    // Build a minimal patient-like object for manual entry
     const patientId = manualMrn.trim() || `MANUAL-${Date.now()}`;
-
-    // Pass emergency contact info through the onPatientFound callback
-    // so DoctorPanel can pre-fill the phone number
-    if (manualContact.trim() || manualPhone.trim()) {
-      onPatientFound({
-        patientId,
-        patientName: manualName.trim(),
-        admissionDate: null,
-        location: null,
-        emergencyContact: {
-          name: manualContact.trim() || "Emergency Contact",
-          phone: manualPhone.trim(),
-        },
-        suggestedStatus: "stable",
-        suggestedAction: "",
-        suggestedReason: "",
-        vitals: [],
-        labs: [],
-        conditions: [],
-        orders: [],
-      });
-    } else {
-      onManualEntry(patientId, manualName.trim());
-    }
+    onManualEntry(patientId, manualName.trim());
   };
 
   // CONNECT
@@ -350,43 +325,6 @@ export default function EpicPatientSearch({
               onChange={(e) => setManualMrn(e.target.value)}
               placeholder="203713"
               className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors font-mono"
-            />
-          </div>
-
-          {/* DIVIDER */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-300">Emergency contact</span>
-            <div className="flex-1 h-px bg-gray-100" />
-          </div>
-
-          {/* CONTACT NAME */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500">
-              Contact name
-              <span className="text-gray-300 font-normal ml-1">optional</span>
-            </label>
-            <input
-              type="text"
-              value={manualContact}
-              onChange={(e) => setManualContact(e.target.value)}
-              placeholder="Sarah Johnson"
-              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-            />
-          </div>
-
-          {/* CONTACT PHONE */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500">
-              Contact phone
-              <span className="text-gray-300 font-normal ml-1">optional · used to send access code</span>
-            </label>
-            <input
-              type="tel"
-              value={manualPhone}
-              onChange={(e) => setManualPhone(e.target.value)}
-              placeholder="(555) 000-0000"
-              className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
             />
           </div>
         </div>

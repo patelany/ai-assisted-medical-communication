@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Format phone number — ensure it starts with +1
     const formatted = phoneNumber.startsWith("+1")
       ? phoneNumber
       : phoneNumber.startsWith("1")
@@ -26,15 +25,12 @@ export async function POST(request: NextRequest) {
       : `+1${phoneNumber.replace(/\D/g, "")}`;
 
     const message = await client.messages.create({
-      body: `Hi, you can follow live updates about your loved one here:\n\nSite: clarityai.app/view\nCode: ${accessCode}\n\nNo account needed — just enter the code. Reply STOP to unsubscribe.`,
+      body: `Your loved one's care team has sent an update via ClarityAI.\n\nAccess code: ${accessCode}\n\nView updates here:\nhttps://ai-assisted-medical-communication.vercel.app/view\n\nEnter your code on that page. No account needed.\n\nReply STOP to unsubscribe.`,
       messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
       to: formatted,
     });
 
-    return NextResponse.json({
-      success: true,
-      messageSid: message.sid,
-    });
+    return NextResponse.json({ success: true, messageSid: message.sid });
   } catch (error: any) {
     console.error("SMS error:", error);
     return NextResponse.json(
