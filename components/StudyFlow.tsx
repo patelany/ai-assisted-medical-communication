@@ -332,6 +332,9 @@ export default function StudyFlow() {
       });
       const data = await res.json();
       if (data.success) {
+        if (data.code) {
+          setVerifyCode(data.code);
+        }
                 if (data.alreadyVerified) {
           setVerifyEmailHash(data.emailHash);
           setStep("returning");
