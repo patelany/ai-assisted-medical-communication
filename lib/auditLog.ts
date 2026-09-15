@@ -6,12 +6,14 @@ const supabase = createClient(
 );
 
 export type AuditAction =
-  | "doctor_login"
-  | "doctor_logout"
+  | "clinician_login"
+  | "clinician_logout"
   | "patient_search"
   | "patient_selected"
   | "update_generated"
   | "update_delivered"
+  | "update_edited"
+  | "update_deleted"
   | "sms_sent"
   | "family_viewer_accessed"
   | "dashboard_accessed"

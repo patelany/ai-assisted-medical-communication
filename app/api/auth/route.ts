@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // Rate limiting
     const { success } = rateLimit(`auth:${ip}`, 5, 15 * 60 * 1000);
     if (!success) {
-      await auditLog("doctor_login", { success: false, reason: "rate_limited" }, ip);
+      await auditLog("clinician_login", { success: false, reason: "rate_limited" }, ip);
       return NextResponse.json(
         { error: "Too many login attempts. Please wait 15 minutes." },
         { status: 429 }
@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
     const passwordMatch = await bcrypt.compare(password || "", passwordHash);
 
     if (usernameMatch && passwordMatch) {
-      await auditLog("doctor_login", { success: true, username }, ip);
+      await auditLog("clinician_login", { success: true, username }, ip);
       return NextResponse.json({ success: true });
     }
 
-    await auditLog("doctor_login", { success: false, reason: "invalid_credentials" }, ip);
+    await auditLog("clinician_login", { success: false, reason: "invalid_credentials" }, ip);
     return NextResponse.json(
       { error: "Invalid credentials" },
       { status: 401 }

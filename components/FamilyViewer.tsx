@@ -154,16 +154,20 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
   }, []);
 
   // Poll for updates
+  const [fetchingInitial, setFetchingInitial] = useState(true);
+
   useEffect(() => {
     if (!unlocked) return;
     const activeCode = correctCode || enteredCode;
-    const fetchUpdates = async () => {
+    const fetchUpdates = async (initial = false) => {
+      if (initial) setFetchingInitial(true);
       const res = await fetch(`/api/viewer?code=${activeCode}`);
       const data = await res.json();
       setUpdates(data.updates || []);
+      if (initial) setFetchingInitial(false);
     };
-    fetchUpdates();
-    const interval = setInterval(fetchUpdates, 10000);
+    fetchUpdates(true);
+    const interval = setInterval(() => fetchUpdates(false), 3000);
     return () => clearInterval(interval);
   }, [unlocked, correctCode, enteredCode]);
 
@@ -386,7 +390,12 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
         </button>
       </div>
 
-      {updates.length === 0 ? (
+            {fetchingInitial ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-5">
+          <div className="w-9 h-9 border-4 border-gray-100 border-t-gray-400 rounded-full animate-spin" />
+          <p className="text-xs text-gray-400">Loading updates…</p>
+        </div>
+      ) : updates.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

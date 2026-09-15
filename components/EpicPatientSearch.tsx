@@ -70,6 +70,13 @@ export default function EpicPatientSearch({
     checkEpicConnection();
   }, []);
 
+  //convert to title case for display
+  function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
   const checkEpicConnection = async () => {
     try {
       const res = await fetch("/api/epic/patient?patientId=test-connection-check");
@@ -162,7 +169,7 @@ export default function EpicPatientSearch({
     }
     setManualError("");
     const patientId = manualMrn.trim() || `MANUAL-${Date.now()}`;
-    onManualEntry(patientId, manualName.trim());
+    onManualEntry(patientId, toTitleCase(manualName.trim()));
   };
 
   // CONNECT
@@ -305,7 +312,7 @@ export default function EpicPatientSearch({
               type="text"
               value={manualName}
               onChange={(e) => {
-                setManualName(e.target.value);
+                setManualName(e.target.value.toUpperCase());
                 setManualError("");
               }}
               placeholder="Full name"

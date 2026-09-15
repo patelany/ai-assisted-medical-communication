@@ -9,33 +9,43 @@ interface Message {
 
 interface FamilyChatProps {
   currentUpdate: string;
+  offset?: boolean;
 }
 
-export default function FamilyChat({ currentUpdate }: FamilyChatProps) {
+export default function FamilyChat({ currentUpdate, offset = false }: FamilyChatProps) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi, I'm here to help you understand medical updates about your loved one. I can explain medical terms and answer general questions. For specific medical advice, always contact the care team directly. What would you like to know?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (open && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, open]);
+
+  const handleOpen = () => {
+    setOpen(true);
+    setHasBeenOpened(true);
+    if (messages.length === 0) {
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Hi — I can help explain anything in the update or answer general questions about what to expect. What would you like to know?",
+        },
+      ]);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage: Message = { role: "user", content: input.trim() };
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage = input.trim();
     setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setLoading(true);
 
     try {
@@ -43,24 +53,21 @@ export default function FamilyChat({ currentUpdate }: FamilyChatProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
-          currentUpdate,
+          message: userMessage,
+          context: currentUpdate,
+          history: messages,
         }),
       });
 
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.reply },
+        { role: "assistant", content: data.reply || "I couldn't process that. Try again." },
       ]);
     } catch (e) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content:
-            "I'm having trouble connecting right now. Please try again in a moment.",
-        },
+        { role: "assistant", content: "Something went wrong. Please try again." },
       ]);
     }
 
@@ -68,119 +75,121 @@ export default function FamilyChat({ currentUpdate }: FamilyChatProps) {
   };
 
   return (
-    <>
-      {/* CHAT BUBBLE BUTTON */}
-      <button
-        onClick={() => setOpen(!open)}
-        className={`fixed bottom-6 right-4 md:right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-all z-50 ${
-          open
-            ? "bg-stone-800 text-white"
-            : "bg-emerald-700 text-white hover:bg-emerald-800"
-        }`}
-      >
-        {open ? "✕" : "💬"}
-      </button>
+    <div className={`fixed ${offset ? "bottom-24" : "bottom-6"} right-6 z-50 flex flex-col items-end gap-3`}>
 
       {/* CHAT WINDOW */}
       {open && (
-        <div
-          className={`
-            fixed z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden
+        <div className="w-80 bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden flex flex-col">
 
-            /* Mobile — nearly full screen */
-            inset-x-3 bottom-24 top-20
-            
-            /* Tablet+ — fixed size in corner */
-            md:inset-auto md:bottom-24 md:right-6 md:w-80 md:h-[420px]
-          `}
-        >
           {/* HEADER */}
-          <div className="bg-emerald-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-            <div>
-              <div className="font-semibold text-sm">Care Assistant</div>
-              <div className="text-xs text-emerald-200">
-                Ask questions about the update
-              </div>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              <p className="text-xs font-semibold text-gray-800">
+                Ask a question
+              </p>
             </div>
-            {/* Mobile close button inside header */}
             <button
               onClick={() => setOpen(false)}
-              className="md:hidden text-emerald-200 hover:text-white text-lg w-8 h-8 flex items-center justify-center"
+              className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer text-xs"
             >
-              ✕
+              Close
             </button>
           </div>
 
           {/* DISCLAIMER */}
-          <div className="bg-amber-50 border-b border-amber-100 px-3 py-2 text-xs text-amber-700 flex-shrink-0">
-            ⚠️ Not a substitute for medical advice. Contact the care team for
-            clinical questions.
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100">
+            <p className="text-xs text-amber-700 leading-relaxed">
+              For medical advice or emergencies, contact the care team directly.
+            </p>
           </div>
 
           {/* MESSAGES */}
-          <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
-            {messages.map((m, i) => (
+          <div className="flex flex-col gap-3 p-4 overflow-y-auto max-h-72">
+            {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${
-                  m.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-xs md:max-w-64 rounded-2xl px-3 py-2 text-xs leading-relaxed ${
-                    m.role === "user"
-                      ? "bg-emerald-700 text-white rounded-br-sm"
-                      : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                  className={`max-w-xs rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  {m.content}
+                  {msg.content}
                 </div>
               </div>
             ))}
 
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-3 py-2">
-                  <div className="flex gap-1 items-center h-4">
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
+                <div className="bg-gray-100 rounded-xl px-3 py-2 flex gap-1 items-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             )}
-
-            <div ref={bottomRef} />
+            <div ref={messagesEndRef} />
           </div>
 
           {/* INPUT */}
-          <div className="border-t border-gray-100 p-3 flex gap-2 flex-shrink-0">
+          <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
             <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask a question..."
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 md:py-2 text-sm md:text-xs focus:outline-none focus:border-emerald-600"
+              placeholder="Ask about this update..."
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
             />
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="bg-emerald-700 text-white rounded-lg px-4 md:px-3 text-sm md:text-xs font-semibold hover:bg-emerald-800 transition-all disabled:bg-gray-200 disabled:cursor-not-allowed"
+              className="bg-gray-900 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
             >
               Send
             </button>
           </div>
         </div>
       )}
-    </>
+
+      {/* TRIGGER BUTTON */}
+      {!open && (
+        <button
+          onClick={handleOpen}
+          className="group flex items-center gap-3 bg-gray-900 text-white rounded-2xl pl-4 pr-5 py-3 shadow-lg hover:bg-gray-700 transition-all duration-200 cursor-pointer"
+        >
+          {/* PULSING DOT */}
+          <div className="relative flex-shrink-0">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            {!hasBeenOpened && (
+              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            )}
+          </div>
+
+          <div className="flex flex-col items-start">
+            <p className="text-xs font-semibold leading-tight">
+              Have questions about this update?
+            </p>
+            <p className="text-xs text-gray-400 leading-tight">
+              Ask our care assistant
+            </p>
+          </div>
+
+          {/* ARROW */}
+          <svg
+            className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition-colors flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }

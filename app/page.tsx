@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import DoctorPanel from "@/components/DoctorPanel";
+import { useState, useEffect, useRef } from "react";
+import ClinicianPanel from "@/components/ClinicianPanel";
 import FamilyViewer from "@/components/FamilyViewer";
 import Dashboard from "@/components/Dashboard";
 import ResearcherAuth from "@/components/ResearcherAuth";
-import DoctorAuth from "@/components/DoctorAuth";
+import ClinicianAuth from "@/components/ClinicianAuth";
 
 function generateCode() {
   const array = new Uint32Array(1);
@@ -14,7 +14,7 @@ function generateCode() {
 }
 
 const TABS = [
-  { key: "compose", label: "Doctor View" },
+  { key: "compose", label: "Clinician View" },
   { key: "viewer", label: "Family View" },
   { key: "dashboard", label: "Dashboard" },
 ];
@@ -22,38 +22,61 @@ const TABS = [
 export default function Home() {
   const [tab, setTab] = useState("compose");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<any>(null);
-  const [accessCode, setAccessCode] = useState("");
+  const [currentMessage, setCurrentMessage] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [accessCode, setAccessCode] = useState("");
   const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
   const [patientLoaded, setPatientLoaded] = useState(false);
   const [currentPatientName, setCurrentPatientName] = useState("");
-  const [doctorAuthed, setDoctorAuthed] = useState(false);
+  const [clinicianAuthed, setClinicianAuthed] = useState(false);
+  const [editingUpdate, setEditingUpdate] = useState<any>(null);
+  const [fetchingUpdates, setFetchingUpdates] = useState(false);
+  const accessCodeRef = useRef("");
 
   useEffect(() => {
+    const authed = localStorage.getItem("clarityai_clinician_authed");
+    const authedAt = localStorage.getItem("clarityai_clinician_authed_at");
+    const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+    if (authed === "true" && authedAt && Date.now() - parseInt(authedAt) < EIGHT_HOURS) {
+      setClinicianAuthed(true);
+      const storedName = localStorage.getItem("clarityai_clinician_name") || "";
+      if (storedName) setCurrentPatientName(storedName);
+    } else {
+      localStorage.removeItem("clarityai_clinician_authed");
+      localStorage.removeItem("clarityai_clinician_authed_at");
+      localStorage.removeItem("clarityai_clinician_name");
+      localStorage.removeItem("clarityai_clinician_email");
+    }
+
     const stored = localStorage.getItem("clarityai_access_code");
     if (stored) {
       setAccessCode(stored);
+      accessCodeRef.current = stored;
+      fetchExistingUpdates(stored);
     } else {
       const newCode = generateCode();
       localStorage.setItem("clarityai_access_code", newCode);
       setAccessCode(newCode);
-    }
-
-    // Check if doctor is already authenticated
-    const authed = localStorage.getItem("clarityai_doctor_authed");
-    const authedAt = localStorage.getItem("clarityai_doctor_authed_at");
-    const EIGHT_HOURS = 8 * 60 * 60 * 1000;
-    if (authed === "true" && authedAt && Date.now() - parseInt(authedAt) < EIGHT_HOURS) {
-      setDoctorAuthed(true);
-    } else {
-      localStorage.removeItem("clarityai_doctor_authed");
-      localStorage.removeItem("clarityai_doctor_authed_at");
+      accessCodeRef.current = newCode;
     }
   }, []);
 
+    const fetchExistingUpdates = async (code: string) => {
+    setFetchingUpdates(true);
+    try {
+      const res = await fetch(`/api/viewer?code=${code}`);
+      const data = await res.json();
+      if (data.updates && data.updates.length > 0) {
+        setHistory(data.updates);
+      }
+    } catch (e) {
+      console.error("Failed to fetch existing updates:", e);
+    }
+    setFetchingUpdates(false);
+  };
+
   const handleGenerate = async (formData: any) => {
-    setMessages(null);
+    setCurrentMessage(null);
     setLoading(true);
 
     try {
@@ -64,7 +87,7 @@ export default function Home() {
       });
 
       const data = await res.json();
-      setMessages(data);
+      setCurrentMessage(data);
 
       const update = {
         time: new Date().toLocaleTimeString([], {
@@ -74,15 +97,37 @@ export default function Home() {
         status: formData.status,
         msg: data.hybrid,
         raw: data.raw,
+        action: formData.action,
+        change: formData.change,
+        reason: formData.reason,
       };
 
-      setHistory((prev) => [update, ...prev]);
-
-      await fetch("/api/viewer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: accessCode, update }),
-      });
+           if (editingUpdate) {
+        console.log("Editing update id:", editingUpdate.id);
+        const patchRes = await fetch(`/api/viewer/${editingUpdate.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ update }),
+        });
+        const patchData = await patchRes.json();
+        console.log("PATCH response:", patchData);
+        setHistory((prev) =>
+          prev.map((h) =>
+            h.id === editingUpdate.id
+              ? { ...update, id: editingUpdate.id }
+              : h
+          )
+        );
+        setEditingUpdate(null);
+      } else {
+        const viewerRes = await fetch("/api/viewer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: accessCode, update }),
+        });
+        const viewerData = await viewerRes.json();
+        setHistory((prev) => [{ ...update, id: viewerData.id }, ...prev]);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -90,24 +135,41 @@ export default function Home() {
     setLoading(false);
   };
 
-  const handlePatientLoaded = (name: string) => {
+  const handleDeleteUpdate = async (id: string) => {
+    try {
+      await fetch(`/api/viewer/${id}`, { method: "DELETE" });
+      setHistory((prev) => prev.filter((h) => h.id !== id));
+      if (editingUpdate?.id === id) setEditingUpdate(null);
+    } catch (e) {
+      console.error("Delete failed:", e);
+    }
+  };
+
+    const handlePatientLoaded = (name: string) => {
     setPatientLoaded(true);
     setCurrentPatientName(name);
-    setMessages(null);
+    fetchExistingUpdates(accessCodeRef.current);
   };
 
   const handlePatientCleared = () => {
     setPatientLoaded(false);
     setCurrentPatientName("");
-    setMessages(null);
+    setCurrentMessage(null);
+    setHistory([]);
+    setEditingUpdate(null);
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem("clarityai_doctor_authed");
-    setDoctorAuthed(false);
+    localStorage.removeItem("clarityai_clinician_authed");
+    localStorage.removeItem("clarityai_clinician_authed_at");
+    localStorage.removeItem("clarityai_clinician_name");
+    localStorage.removeItem("clarityai_clinician_email");
+    setClinicianAuthed(false);
     setPatientLoaded(false);
     setCurrentPatientName("");
-    setMessages(null);
+    setCurrentMessage(null);
+    setHistory([]);
+    setEditingUpdate(null);
   };
 
   const handleTabClick = (key: string) => {
@@ -118,14 +180,16 @@ export default function Home() {
     setTab(key);
   };
 
-  // DOCTOR AUTH GATE
-  if (!doctorAuthed) {
+  if (!clinicianAuthed) {
     return (
       <div className="min-h-screen flex flex-col bg-stone-100">
         <header className="bg-stone-900 text-white px-4 md:px-9 h-14 flex items-center flex-shrink-0">
           <span className="font-serif text-base md:text-xl">ClarityAI</span>
         </header>
-        <DoctorAuth onAuthenticated={() => setDoctorAuthed(true)} />
+        <ClinicianAuth onAuthenticated={(clinician) => {
+          setClinicianAuthed(true);
+          if (clinician?.name) setCurrentPatientName(clinician.name);
+        }} />
       </div>
     );
   }
@@ -133,7 +197,6 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-stone-100">
 
-      {/* HEADER */}
       <header className="bg-stone-900 text-white px-4 md:px-9 h-14 flex items-center justify-between flex-shrink-0">
         <div className="flex items-baseline gap-2 md:gap-3 min-w-0">
           <span className="font-serif text-base md:text-xl whitespace-nowrap">
@@ -160,7 +223,7 @@ export default function Home() {
               <button
                 key={key}
                 onClick={() => handleTabClick(key)}
-                className={`px-2 md:px-4 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
+                className={`px-2 md:px-4 py-1.5 rounded text-xs font-mono tracking-wide border transition-all cursor-pointer ${
                   tab === key
                     ? "bg-stone-700 text-white border-stone-600"
                     : "border-stone-700 text-stone-400 hover:text-white hover:bg-stone-800"
@@ -175,35 +238,43 @@ export default function Home() {
             ))}
           </nav>
 
-          {/* SIGN OUT */}
           <button
             onClick={handleSignOut}
-            className="text-xs text-stone-500 hover:text-white border border-stone-700 rounded-lg px-3 py-1.5 transition-all hover:border-stone-500 hidden sm:block"
+            className="text-xs text-stone-500 hover:text-white border border-stone-700 rounded-lg px-3 py-1.5 transition-all hover:border-stone-500 hidden sm:block cursor-pointer"
           >
             Sign Out
           </button>
         </div>
       </header>
 
-      {/* BODY */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* COMPOSE TAB */}
         {tab === "compose" && (
           <>
-            <DoctorPanel
+            <ClinicianPanel
               onGenerate={handleGenerate}
               loading={loading}
               accessCode={accessCode}
-              hasMessages={!!messages}
+              hasMessages={history.length > 0}
               onPatientLoaded={handlePatientLoaded}
               onPatientCleared={handlePatientCleared}
+              editingUpdate={editingUpdate}
+              onCancelEdit={() => setEditingUpdate(null)}
             />
 
             {patientLoaded && (
               <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
 
-                {!messages && !loading && (
+                                {fetchingUpdates && (
+                  <div className="flex flex-col items-center justify-center min-h-96 gap-5">
+                    <div className="w-9 h-9 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
+                    <div className="font-mono text-xs text-stone-400 tracking-widest">
+                      Loading updates…
+                    </div>
+                  </div>
+                )}
+
+                {history.length === 0 && !loading && !fetchingUpdates && (
                   <div className="flex flex-col items-center justify-center min-h-96 gap-4 text-stone-400">
                     <div className="text-5xl opacity-40">📋</div>
                     <div className="text-xl md:text-2xl font-serif text-stone-600">
@@ -216,7 +287,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {loading && (
+                  {loading && !fetchingUpdates && (
                   <div className="flex flex-col items-center justify-center min-h-96 gap-5">
                     <div className="w-9 h-9 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
                     <div className="font-mono text-xs text-stone-400 tracking-widest">
@@ -225,52 +296,62 @@ export default function Home() {
                   </div>
                 )}
 
-                {messages && !loading && (
+                {!loading && history.length > 0 && (
                   <div className="max-w-2xl mx-auto flex flex-col gap-4">
 
-                    {messages.hipaa?.length > 0 ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                        <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
-                          🔒 HIPAA De-identification Report
-                        </div>
-                        {messages.hipaa.map((h: any, i: number) => (
-                          <div key={i} className="flex flex-wrap items-center gap-2 mb-2 text-xs">
-                            <span className="text-gray-400 w-20 flex-shrink-0">{h.type}</span>
-                            <span className="line-through text-red-500 font-mono">{h.original}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="bg-white text-blue-700 font-mono px-2 py-0.5 rounded">{h.replacement}</span>
+                    {currentMessage && (
+                      <>
+                        {currentMessage.hipaa?.length > 0 ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <div className="text-xs font-bold tracking-widest uppercase text-blue-700 mb-3">
+                              HIPAA De-identification Report
+                            </div>
+                            {currentMessage.hipaa.map((h: any, i: number) => (
+                              <div key={i} className="flex flex-wrap items-center gap-2 mb-2 text-xs">
+                                <span className="text-gray-400 w-20 flex-shrink-0">{h.type}</span>
+                                <span className="line-through text-red-500 font-mono">{h.original}</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="bg-white text-blue-700 font-mono px-2 py-0.5 rounded">{h.replacement}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex gap-2">
-                        ✓ <strong>No PHI detected</strong> — input appears safe to transmit.
-                      </div>
+                        ) : (
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex gap-2">
+                            ✓ <strong>No PHI detected</strong> — input appears safe to transmit.
+                          </div>
+                        )}
+                      </>
                     )}
 
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                        <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
-                          Update Sent to Family
-                        </span>
-                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                          ✓ Delivered to family viewer
-                        </span>
+                    {history.map((update, i) => (
+                      <div key={update.id || i} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                          <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
+                            {i === 0 ? "Latest Update" : `Update — ${update.time}`}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400">{update.time}</span>
+                            <button
+                              onClick={() => setEditingUpdate(update)}
+                              className="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUpdate(update.id)}
+                              className="text-xs text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-5">
+                          <p className="text-sm leading-relaxed text-gray-800">
+                            {update.msg}
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-5">
-                        <p className="text-sm leading-relaxed text-gray-800">
-                          {messages.hybrid}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setMessages(null)}
-                      className="w-full border border-gray-200 bg-white rounded-xl p-3 text-sm text-gray-500 font-medium hover:border-emerald-600 hover:text-emerald-700 transition-all"
-                    >
-                      + Generate New Update
-                    </button>
-
+                    ))}
                   </div>
                 )}
               </main>
@@ -278,14 +359,12 @@ export default function Home() {
           </>
         )}
 
-        {/* VIEWER TAB */}
         {tab === "viewer" && (
           <main className="flex-1 overflow-y-auto bg-stone-100">
             <FamilyViewer correctCode={accessCode} />
           </main>
         )}
 
-        {/* DASHBOARD TAB */}
         {tab === "dashboard" && (
           <main className="flex-1 overflow-y-auto p-4 md:p-7 bg-stone-100">
             {!dashboardUnlocked ? (

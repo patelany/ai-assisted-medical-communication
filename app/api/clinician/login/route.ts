@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    const { success } = rateLimit(`doctor-login:${ip}`, 5, 15 * 60 * 1000);
+    const { success } = rateLimit(`clinician-login:${ip}`, 5, 15 * 60 * 1000);
     if (!success) {
-      await auditLog("doctor_login", { success: false, reason: "rate_limited" }, ip);
+      await auditLog("clinician_login", { success: false, reason: "rate_limited" }, ip);
       return NextResponse.json(
         { error: "Too many login attempts. Please wait 15 minutes." },
         { status: 429 }
@@ -43,22 +43,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: doctor } = await supabase
-      .from("doctors")
+    const { data: clinician } = await supabase
+      .from("clinicians")
       .select("id, email, password_hash, name")
       .eq("email", email.toLowerCase().trim())
       .single();
 
-    const passwordMatch = doctor
-      ? await bcrypt.compare(password, doctor.password_hash)
+    const passwordMatch = clinician
+      ? await bcrypt.compare(password, clinician.password_hash)
       : await bcrypt.compare(
           password,
           "$2a$12$placeholder.hash.to.prevent.timing.attacks"
         );
 
-    if (!doctor || !passwordMatch) {
+    if (!clinician || !passwordMatch) {
       await auditLog(
-        "doctor_login",
+        "clinician_login",
         { success: false, reason: "invalid_credentials" },
         ip
       );
@@ -69,17 +69,17 @@ export async function POST(request: NextRequest) {
     }
 
     await auditLog(
-      "doctor_login",
-      { success: true, doctorId: doctor.id },
+      "clinician_login",
+      { success: true, clinicianId: clinician.id },
       ip
     );
 
     return NextResponse.json({
       success: true,
-      doctor: { id: doctor.id, email: doctor.email, name: doctor.name },
+      clinician: { id: clinician.id, email: clinician.email, name: clinician.name },
     });
   } catch (error: any) {
-    console.error("Doctor login error:", error);
+    console.error("Clinician login error:", error);
     return NextResponse.json({ error: "Login failed." }, { status: 500 });
   }
 }

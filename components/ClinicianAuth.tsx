@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 
-interface DoctorAuthProps {
-  onAuthenticated: (doctor?: { name: string; email: string }) => void;
+interface ClinicianAuthProps {
+  onAuthenticated: (clinician?: { name: string; email: string }) => void;
 }
 
 type AuthStep = "biometric" | "login" | "register" | "register-biometric";
 
-export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
+export default function ClinicianAuth({ onAuthenticated }: ClinicianAuthProps) {
   const [step, setStep] = useState<AuthStep>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     const supported =
       typeof window !== "undefined" &&
       window.PublicKeyCredential !== undefined;
-    const registered = !!localStorage.getItem("clarityai_doctor_credential_id");
+    const registered = !!localStorage.getItem("clarityai_clinician_credential_id");
     setBiometricSupported(supported);
     setBiometricRegistered(registered);
 
@@ -35,12 +35,12 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     }
   }, []);
 
-  const setAuthSession = (doctor?: { name: string; email: string }) => {
-    localStorage.setItem("clarityai_doctor_authed", "true");
-    localStorage.setItem("clarityai_doctor_authed_at", Date.now().toString());
-    if (doctor) {
-      localStorage.setItem("clarityai_doctor_name", doctor.name);
-      localStorage.setItem("clarityai_doctor_email", doctor.email);
+  const setAuthSession = (clinician?: { name: string; email: string }) => {
+    localStorage.setItem("clarityai_clinician_authed", "true");
+    localStorage.setItem("clarityai_clinician_authed_at", Date.now().toString());
+    if (clinician) {
+      localStorage.setItem("clarityai_clinician_name", clinician.name);
+      localStorage.setItem("clarityai_clinician_email", clinician.email);
     }
   };
 
@@ -50,7 +50,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
 
     try {
       const existingCredential = localStorage.getItem(
-        "clarityai_doctor_credential_id"
+        "clarityai_clinician_credential_id"
       );
       if (!existingCredential) {
         setError("No biometric registered on this device.");
@@ -74,8 +74,8 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       };
 
       await navigator.credentials.get({ publicKey: assertionOptions });
-      const storedName = localStorage.getItem("clarityai_doctor_name") || "";
-      const storedEmail = localStorage.getItem("clarityai_doctor_email") || "";
+      const storedName = localStorage.getItem("clarityai_clinician_name") || "";
+      const storedEmail = localStorage.getItem("clarityai_clinician_email") || "";
       setAuthSession({ name: storedName, email: storedEmail });
       onAuthenticated({ name: storedName, email: storedEmail });
     } catch (e: any) {
@@ -99,7 +99,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     setError("");
 
     try {
-      const res = await fetch("/api/doctor/login", {
+      const res = await fetch("/api/clinician/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -108,11 +108,11 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       const data = await res.json();
 
       if (data.success) {
-        setAuthSession(data.doctor);
+        setAuthSession(data.clinician);
         if (biometricSupported && !biometricRegistered) {
           setStep("register-biometric");
         } else {
-          onAuthenticated(data.doctor);
+          onAuthenticated(data.clinician);
         }
       } else {
         setError(data.error || "Invalid email or password.");
@@ -144,7 +144,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
     setError("");
 
     try {
-      const res = await fetch("/api/doctor/register", {
+      const res = await fetch("/api/clinician/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
@@ -154,7 +154,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
 
       if (data.success) {
         // Auto-login after registration
-        const loginRes = await fetch("/api/doctor/login", {
+        const loginRes = await fetch("/api/clinician/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -162,11 +162,11 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
         const loginData = await loginRes.json();
 
         if (loginData.success) {
-          setAuthSession(loginData.doctor);
+          setAuthSession(loginData.clinician);
           if (biometricSupported && !biometricRegistered) {
             setStep("register-biometric");
           } else {
-            onAuthenticated(loginData.doctor);
+            onAuthenticated(loginData.clinician);
           }
         }
       } else {
@@ -189,8 +189,8 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
         rp: { name: "ClarityAI", id: window.location.hostname },
         user: {
           id: crypto.getRandomValues(new Uint8Array(16)),
-          name: email || "doctor",
-          displayName: name || "Doctor",
+          name: email || "clinician",
+          displayName: name || "Clinician",
         },
         pubKeyCredParams: [
           { alg: -7, type: "public-key" },
@@ -208,13 +208,13 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       })) as PublicKeyCredential;
 
       localStorage.setItem(
-        "clarityai_doctor_credential_id",
+        "clarityai_clinician_credential_id",
         btoa(String.fromCharCode(...new Uint8Array(credential.rawId)))
       );
 
-      const storedName = localStorage.getItem("clarityai_doctor_name") || "";
+      const storedName = localStorage.getItem("clarityai_clinician_name") || "";
       const storedEmail =
-        localStorage.getItem("clarityai_doctor_email") || "";
+        localStorage.getItem("clarityai_clinician_email") || "";
       onAuthenticated({ name: storedName, email: storedEmail });
     } catch (e: any) {
       if (e.name === "NotAllowedError") {
@@ -224,9 +224,9 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
       }
       setTimeout(() => {
         const storedName =
-          localStorage.getItem("clarityai_doctor_name") || "";
+          localStorage.getItem("clarityai_clinician_name") || "";
         const storedEmail =
-          localStorage.getItem("clarityai_doctor_email") || "";
+          localStorage.getItem("clarityai_clinician_email") || "";
         onAuthenticated({ name: storedName, email: storedEmail });
       }, 1500);
     }
@@ -304,7 +304,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                  placeholder="doctor@hospital.com"
+                  placeholder="clinician@hospital.com"
                   className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   autoCapitalize="none"
@@ -389,7 +389,7 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                  placeholder="doctor@hospital.com"
+                  placeholder="clinician@hospital.com"
                   className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -484,9 +484,9 @@ export default function DoctorAuth({ onAuthenticated }: DoctorAuthProps) {
               <button
                 onClick={() => {
                   const storedName =
-                    localStorage.getItem("clarityai_doctor_name") || "";
+                    localStorage.getItem("clarityai_clinician_name") || "";
                   const storedEmail =
-                    localStorage.getItem("clarityai_doctor_email") || "";
+                    localStorage.getItem("clarityai_clinician_email") || "";
                   onAuthenticated({ name: storedName, email: storedEmail });
                 }}
                 className="text-xs text-gray-400 hover:text-gray-600 transition-colors text-center py-1"

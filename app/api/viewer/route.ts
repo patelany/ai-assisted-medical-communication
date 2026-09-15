@@ -32,13 +32,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const { error } = await supabase.from("viewer_updates").insert({
-      access_code: code,
-      time: update.time,
-      status: update.status,
-      msg: update.msg,
-      raw: update.raw || "",
-    });
+    const { data, error } = await supabase
+      .from("viewer_updates")
+      .insert({
+        access_code: code,
+        time: update.time,
+        status: update.status,
+        msg: update.msg,
+        raw: update.raw || "",
+        action: update.action || "",
+        change: update.change || "",
+        reason: update.reason || "",
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error("Supabase insert error:", error);
@@ -46,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     await auditLog("update_delivered", { code: code.substring(0, 3) + "***" }, ip);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: data.id });
   } catch (e) {
     console.error("Viewer POST error:", e);
     return NextResponse.json({ error: "Failed to save update" }, { status: 500 });
@@ -82,10 +89,14 @@ export async function GET(request: NextRequest) {
     }
 
     const updates = (data || []).map((row) => ({
+      id: row.id,
       time: row.time,
       status: row.status,
       msg: row.msg,
       raw: row.raw,
+      action: row.action || "",
+      change: row.change || "",
+      reason: row.reason || "",
     }));
 
     await auditLog("family_viewer_accessed", { code: code.substring(0, 3) + "***" }, ip);

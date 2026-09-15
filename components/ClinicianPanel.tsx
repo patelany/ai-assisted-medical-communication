@@ -1,6 +1,7 @@
 "use client";
-import EpicPatientSearch from "@/components/EpicPatientSearch";
+
 import { useState, useEffect } from "react";
+import EpicPatientSearch from "@/components/EpicPatientSearch";
 
 const STATUS_OPTIONS = [
   { value: "stable", label: "Stable", color: "bg-emerald-400" },
@@ -11,23 +12,27 @@ const STATUS_OPTIONS = [
   { value: "critical", label: "Critical", color: "bg-red-500" },
 ];
 
-interface DoctorPanelProps {
+interface ClinicianPanelProps {
   onGenerate: (data: any) => void;
   loading: boolean;
   accessCode: string;
   hasMessages: boolean;
   onPatientLoaded: (name: string) => void;
   onPatientCleared: () => void;
+  editingUpdate?: any;
+  onCancelEdit?: () => void;
 }
 
-export default function DoctorPanel({
+export default function ClinicianPanel({
   onGenerate,
   loading,
   accessCode,
   hasMessages,
   onPatientLoaded,
   onPatientCleared,
-}: DoctorPanelProps) {
+  editingUpdate,
+  onCancelEdit,
+}: ClinicianPanelProps) {
   const [status, setStatus] = useState("stable");
   const [action, setAction] = useState("");
   const [change, setChange] = useState("");
@@ -55,7 +60,8 @@ export default function DoctorPanel({
   const [epicData, setEpicData] = useState<any>(null);
   const [useAutoFill, setUseAutoFill] = useState(false);
 
-    useEffect(() => {
+  // Restore patient session on mount
+  useEffect(() => {
     const stored = localStorage.getItem("clarityai_patient");
     if (stored) {
       try {
@@ -70,6 +76,19 @@ export default function DoctorPanel({
       }
     }
   }, []);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editingUpdate) {
+      setStatus(editingUpdate.status || "stable");
+      setAction(editingUpdate.action || "");
+      setChange(editingUpdate.change || "");
+      setReason(editingUpdate.reason || "");
+      setNoChange(false);
+      setNoReason(false);
+      setCollapsed(false);
+    }
+  }, [editingUpdate]);
 
   const handleSendSms = async () => {
     if (!phoneNumber.trim() || !smsOptIn) return;
@@ -135,7 +154,6 @@ export default function DoctorPanel({
     } else if (patient.emergencyContact?.phone) {
       setPhoneNumber(patient.emergencyContact.phone);
     }
-    // Persist patient session
     localStorage.setItem("clarityai_patient", JSON.stringify(patient));
   };
 
@@ -146,8 +164,10 @@ export default function DoctorPanel({
     setIsManualEntry(true);
     setUseAutoFill(false);
     onPatientLoaded(name || id);
-    // Persist patient session
-    localStorage.setItem("clarityai_patient", JSON.stringify({ patientId: id, patientName: name, isManual: true }));
+    localStorage.setItem(
+      "clarityai_patient",
+      JSON.stringify({ patientId: id, patientName: name, isManual: true })
+    );
   };
 
   const handleAutoFill = () => {
@@ -181,15 +201,14 @@ export default function DoctorPanel({
     setSmsOptIn(false);
     setSmsSent(false);
     setSmsError("");
-    onPatientCleared();
     localStorage.removeItem("clarityai_patient");
+    onPatientCleared();
   };
 
   // FULL SCREEN PATIENT SEARCH
   if (!patientLoaded) {
     return (
       <div className="flex-1 flex bg-gray-50">
-        {/* LEFT PANEL */}
         <div className="hidden lg:flex flex-col justify-between w-80 min-w-80 bg-white border-r border-gray-100 p-10">
           <div>
             <div className="flex items-center gap-3 mb-12">
@@ -232,7 +251,6 @@ export default function DoctorPanel({
           <p className="text-xs text-gray-300">Medical Communication Platform</p>
         </div>
 
-        {/* RIGHT — SEARCH */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm">
             <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm">
@@ -250,7 +268,6 @@ export default function DoctorPanel({
   // SIDEBAR WITH CLINICAL FORM
   return (
     <>
-      {/* MOBILE TOGGLE */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="lg:hidden fixed bottom-6 left-6 z-50 bg-gray-900 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-sm font-medium cursor-pointer"
@@ -258,7 +275,6 @@ export default function DoctorPanel({
         {collapsed ? "+" : "✕"}
       </button>
 
-      {/* SIDEBAR */}
       <div
         className={`
           bg-white border-r border-gray-100 flex flex-col gap-5 overflow-y-auto
@@ -269,7 +285,6 @@ export default function DoctorPanel({
           lg:w-80 lg:min-w-80 lg:p-6
         `}
       >
-        {/* MOBILE CLOSE */}
         <div className="flex items-center justify-between md:hidden">
           <span className="text-sm font-medium text-gray-900">Clinical Input</span>
           <button
@@ -279,6 +294,21 @@ export default function DoctorPanel({
             Close
           </button>
         </div>
+
+        {/* EDIT MODE BANNER */}
+        {editingUpdate && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+            <p className="text-xs font-medium text-amber-700">
+              Editing update from {editingUpdate.time}
+            </p>
+            <button
+              onClick={onCancelEdit}
+              className="text-xs text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
         {/* PATIENT HEADER */}
         <div className="border border-gray-100 rounded-xl p-4 bg-gray-50">
@@ -422,7 +452,7 @@ export default function DoctorPanel({
           </label>
         </div>
 
-         {/* HIPAA NOTE */}
+        {/* HIPAA NOTE */}
         <div className="flex items-start gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 flex-shrink-0" />
           <p className="text-xs text-gray-400 leading-relaxed">
@@ -496,7 +526,7 @@ export default function DoctorPanel({
           )}
         </div>
 
-        {/* GENERATE */}
+        {/* GENERATE / UPDATE */}
         <button
           onClick={() => {
             handleSubmit();
@@ -505,8 +535,21 @@ export default function DoctorPanel({
           disabled={loading || !action.trim()}
           className="bg-gray-900 text-white rounded-lg py-3 text-sm font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
         >
-          {loading ? "Processing..." : "Generate update"}
+          {loading
+            ? "Processing..."
+            : editingUpdate
+            ? "Update"
+            : "Generate update"}
         </button>
+
+        {editingUpdate && onCancelEdit && (
+          <button
+            onClick={onCancelEdit}
+            className="w-full border border-gray-200 text-gray-400 rounded-lg py-2 text-xs font-medium hover:border-gray-300 hover:text-gray-600 transition-colors cursor-pointer"
+          >
+            Cancel edit
+          </button>
+        )}
 
         {/* ACCESS CODE */}
         <div className="border-t border-gray-100 pt-5">
@@ -554,7 +597,6 @@ export default function DoctorPanel({
         </div>
       </div>
 
-      {/* MOBILE BACKDROP */}
       {!collapsed && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-40 z-30"

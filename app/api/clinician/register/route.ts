@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: existing } = await supabase
-      .from("doctors")
+      .from("clinicians")
       .select("id")
       .eq("email", email.toLowerCase().trim())
       .single();
@@ -63,14 +63,14 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const { error } = await supabase.from("doctors").insert({
+    const { error } = await supabase.from("clinicians").insert({
       email: email.toLowerCase().trim(),
       password_hash: passwordHash,
       name: name.trim(),
     });
 
     if (error) {
-      console.error("Doctor registration error:", error);
+      console.error("Clinician registration error:", error);
       return NextResponse.json(
         { error: "Registration failed. Try again." },
         { status: 500 }
