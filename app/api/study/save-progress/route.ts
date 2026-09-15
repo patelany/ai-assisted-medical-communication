@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
         scenario_order: scenarioOrder,
         demographics,
         path,
+        current_step: body.currentStep || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: "email_hash" });
 

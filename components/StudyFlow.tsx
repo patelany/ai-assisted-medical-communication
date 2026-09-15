@@ -389,6 +389,7 @@ export default function StudyFlow() {
   const saveProgress = async (overrides?: {
     scenarioIndex?: number;
     newResponses?: ScenarioResponse[];
+    currentStep?: Step;
   }) => {
     if (!verifyEmailHash) return;
     try {
@@ -404,6 +405,7 @@ export default function StudyFlow() {
           scenarioOrder,
           demographics: { ageRange, medicalBackground, priorHospitalization, communicatedUpdates },
           path: isMedical.current ? "clinician" : "family",
+          currentStep: overrides?.currentStep ?? step,
         }),
       });
     } catch (e) {
@@ -478,8 +480,10 @@ export default function StudyFlow() {
     preGenerateAllScenarios(scenarioOrder).then(() => {
       if (isMedical.current) {
         setStep("clinician-intro");
+        saveProgress({ currentStep: "clinician-intro" });
       } else {
         setStep("family-intro");
+        saveProgress({ currentStep: "family-intro" });
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -822,12 +826,19 @@ export default function StudyFlow() {
                         if (session.current_scenario_index !== undefined) {
                           setCurrentScenarioIndex(session.current_scenario_index);
                         }
-                        setStep("preparing");
-                        const scenariosToGenerate = session.scenario_order || scenarioOrder;
-                        preGenerateAllScenarios(scenariosToGenerate).then(() => {
-                          setStep("scenario");
+                        const savedStep = (session.current_step as Step) || "scenario";
+                        const needsPregen = ["scenario", "clinician-intro", "clinician-form", "family-intro", "family-viewer"].includes(savedStep);
+                        if (needsPregen) {
+                          setStep("preparing");
+                          const scenariosToGenerate = session.scenario_order || scenarioOrder;
+                          preGenerateAllScenarios(scenariosToGenerate).then(() => {
+                            setStep(savedStep);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          });
+                        } else {
+                          setStep(savedStep);
                           window.scrollTo({ top: 0, behavior: "smooth" });
-                        });
+                        }
                       } else {
                         setStep("preparing");
                         preGenerateAllScenarios(scenarioOrder).then(() => {
@@ -1515,15 +1526,15 @@ export default function StudyFlow() {
           {!familyLoading && <FamilyChat currentUpdate={familyUpdates[0]?.msg || ""} offset={true} />}
 
           {/* STICKY FOOTER */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 z-50">
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between gap-3 z-50">
+            <p className="text-sm text-gray-500">
+              {cameFromClinicianResult ? "Done reviewing the family view?" : "Finished reading the updates?"}
+            </p>
             <button
               onClick={() => setShowFamilyViewerModal(true)}
               className="relative bg-gray-900 text-white rounded-xl px-6 py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer flex-shrink-0 overflow-hidden flex items-center gap-3"
             >
-              <span className="relative z-10 text-gray-300 text-xs">
-                {cameFromClinicianResult ? "Done reviewing?" : "Finished reading?"}
-              </span>
-              <span className="relative z-10 border-l border-gray-700 pl-3">
+              <span className="relative z-10">
                 {cameFromClinicianResult ? "Back to results" : "Rate this experience"}
               </span>
               <span className="absolute inset-0 opacity-20" style={{ background: "linear-gradient(90deg, transparent 0%, white 50%, transparent 100%)", backgroundSize: "200% 100%", animation: "shimmer 2s infinite linear" }} />
