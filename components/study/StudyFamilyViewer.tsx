@@ -149,17 +149,17 @@ export default function StudyFamilyViewer({
         )}
 
         {/* STICKY FOOTER */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-4 z-50">
+          <p className="text-sm text-gray-400">
+            {cameFromClinicianResult
+              ? "Done viewing the family experience?"
+              : "Finished reading the updates?"}
+          </p>
           <button
             onClick={() => setShowModal(true)}
-            className="relative bg-gray-900 text-white rounded-xl px-5 py-3 text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden flex items-center gap-4"
+            className="relative bg-gray-900 text-white rounded-xl px-5 py-3 text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden flex items-center gap-2 flex-shrink-0"
           >
-            <span className="relative z-10 text-gray-400 text-xs">
-              {cameFromClinicianResult
-                ? "Done viewing the family experience?"
-                : "Finished reading the updates?"}
-            </span>
-            <span className="relative z-10 flex items-center gap-2 border-l border-gray-700 pl-4">
+            <span className="relative z-10 flex items-center gap-2">
               {cameFromClinicianResult ? "Continue to rating" : "Rate this experience"}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

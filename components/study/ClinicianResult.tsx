@@ -43,7 +43,12 @@ export default function ClinicianResult({
           onClick={onContinueToRating}
           className="relative bg-gray-900 text-white rounded-xl px-6 py-3 text-sm font-medium shadow-lg hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden"
         >
-          <span className="relative z-10">Continue to family view</span>
+          <span className="relative z-10 flex items-center gap-2">
+            Continue to family view
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
           <span
             className="absolute inset-0 opacity-20"
             style={{
