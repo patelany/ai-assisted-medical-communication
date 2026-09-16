@@ -324,7 +324,7 @@ export default function Home() {
                     )}
 
                     {history.map((update, i) => (
-                      <div key={update.id || i} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div key={update.id || i} className={`rounded-xl overflow-hidden ${i === 0 ? "bg-white border-2 border-amber-200" : "bg-white border border-gray-200"}`}>
                         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                           <span className="text-xs font-mono tracking-widest uppercase px-2 py-1 rounded font-medium bg-amber-100 text-amber-700">
                             {i === 0 ? "Latest Update" : `Update — ${update.time}`}
