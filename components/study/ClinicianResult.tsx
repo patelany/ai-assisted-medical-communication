@@ -37,56 +37,13 @@ export default function ClinicianResult({
         label="Clinician view"
       />
 
-      {/* RETURNED FROM FAMILY VIEW MODAL */}
-      {returnedFromFamilyView && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-              <h2 className="text-base font-semibold text-gray-900">
-                You've seen the family view
-              </h2>
-            </div>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Now that you've experienced both sides of ClarityAI, you're
-              ready to rate the clinician experience and continue the study.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={onContinueToRating}
-                className="relative w-full bg-gray-900 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden"
-              >
-                <span className="relative z-10">Continue to rating</span>
-                <span
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, transparent 0%, white 50%, transparent 100%)",
-                    backgroundSize: "200% 100%",
-                    animation: "shimmer 2s infinite linear",
-                  }}
-                />
-              </button>
-              <button
-                onClick={onDismissReturnedModal}
-                className="w-full border border-gray-200 text-gray-500 rounded-xl py-3 text-sm font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Review results first
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FIXED RATE BUTTON */}
+      {/* FIXED NEXT BUTTON */}
       <div className="fixed bottom-8 right-8 z-50">
         <button
           onClick={onContinueToRating}
           className="relative bg-gray-900 text-white rounded-xl px-6 py-3 text-sm font-medium shadow-lg hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden"
         >
-          <span className="relative z-10">Rate this experience</span>
+          <span className="relative z-10">Continue to family view</span>
           <span
             className="absolute inset-0 opacity-20"
             style={{
@@ -260,20 +217,13 @@ export default function ClinicianResult({
               </p>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <p className="text-sm font-medium text-gray-800 mb-1">
-                Want to see what the family sees?
+                Next: see what the family sees
               </p>
-              <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                View the family update feed to see exactly how your update
-                appears to family members.
+              <p className="text-xs text-gray-600 leading-relaxed">
+                You'll now experience ClarityAI from the family's perspective — the same update you just generated will appear in their feed.
               </p>
-              <button
-                onClick={onViewFamilyFeed}
-                className="w-full border border-gray-200 text-gray-600 rounded-lg py-2.5 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                View family update feed
-              </button>
             </div>
           </div>
         </div>

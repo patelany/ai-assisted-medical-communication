@@ -47,6 +47,7 @@ const MEDICAL_STEPS = [
   "clinician-intro",
   "clinician-form",
   "clinician-result",
+  "family-viewer",
   "clinician-rating",
   "scenario",
   "post-scenario",
@@ -562,12 +563,11 @@ export default function StudyFlow() {
         clinicianReason={clinicianReason}
         returnedFromFamilyView={returnedFromFamilyView}
         onContinueToRating={() => {
-          setReturnedFromFamilyView(false);
-          goToStep("clinician-rating");
+          handleFamilyViewerLoad();
+          goToStep("family-viewer");
         }}
         onDismissReturnedModal={() => setReturnedFromFamilyView(false)}
         onViewFamilyFeed={() => {
-          setCameFromClinicianResult(true);
           handleFamilyViewerLoad();
           goToStep("family-viewer");
         }}
@@ -625,8 +625,8 @@ export default function StudyFlow() {
         onContinue={() => {
           if (cameFromClinicianResult) {
             setCameFromClinicianResult(false);
-            setReturnedFromFamilyView(true);
-            goToStep("clinician-result");
+            saveProgress({ currentStep: "clinician-rating" });
+            goToStep("clinician-rating");
           } else {
             saveProgress({ currentStep: "family-rating" });
             goToStep("family-rating");

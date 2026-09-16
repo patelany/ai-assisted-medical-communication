@@ -152,7 +152,7 @@ export default function StudyFamilyViewer({
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between gap-4 z-50">
           <p className="text-sm text-gray-500">
             {cameFromClinicianResult
-              ? "Done reviewing the family view?"
+              ? "Done viewing the family experience?"
               : "Finished reading the updates?"}
           </p>
           <button
@@ -161,7 +161,7 @@ export default function StudyFamilyViewer({
           >
             <span className="relative z-10">
               {cameFromClinicianResult
-                ? "Back to results"
+                ? "Continue to rating"
                 : "Rate this experience"}
             </span>
             <span
@@ -182,12 +182,12 @@ export default function StudyFamilyViewer({
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-xl">
               <h2 className="text-base font-semibold text-gray-900">
                 {cameFromClinicianResult
-                  ? "Return to results?"
+                  ? "Ready to rate?"
                   : "Ready to rate?"}
               </h2>
               <p className="text-sm text-gray-400 leading-relaxed">
                 {cameFromClinicianResult
-                  ? "You'll go back to the clinician result screen to continue the study."
+                  ? "You've now seen both the clinician and family sides of ClarityAI. Continue to rate your experience."
                   : "You'll rate your experience with the family viewer. Make sure you've read all three updates above."}
               </p>
               <div className="flex flex-col gap-2">
@@ -199,9 +199,7 @@ export default function StudyFamilyViewer({
                   className="relative w-full bg-gray-900 text-white rounded-xl py-3 text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer overflow-hidden"
                 >
                   <span className="relative z-10">
-                    {cameFromClinicianResult
-                      ? "Back to results"
-                      : "Continue to rating"}
+                    Continue to rating
                   </span>
                   <span
                     className="absolute inset-0 opacity-20"
