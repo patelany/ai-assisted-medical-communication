@@ -503,11 +503,24 @@ export default function StudyFlow() {
           isMedical.current = demo.medicalBackground === "medical";
           setStep("preparing");
           preGenerateAllScenarios(scenarioOrder).then(() => {
-            if (isMedical.current) {
-              goToStep("clinician-intro");
-            } else {
-              goToStep("family-intro");
-            }
+            const nextStep = isMedical.current ? "clinician-intro" : "family-intro";
+            // Save initial session so returning participants can resume
+            fetch("/api/study/save-progress", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                emailHash: verifyEmailHash,
+                participantId,
+                currentScenarioIndex: 0,
+                responses: [],
+                versionAssignment,
+                scenarioOrder,
+                demographics: demo,
+                path: isMedical.current ? "clinician" : "family",
+                currentStep: nextStep,
+              }),
+            }).catch(console.error);
+            goToStep(nextStep);
           });
         }}
         progressCurrent={progressCurrent}
