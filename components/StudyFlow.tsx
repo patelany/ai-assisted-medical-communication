@@ -276,8 +276,10 @@ export default function StudyFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-    useEffect(() => {
+  useEffect(() => {
     const completed = localStorage.getItem("clarityai_study_complete");
+    console.log("Study complete flag:", completed);
+    console.log("Initial step:", step);
     if (completed) {
       setStep("complete");
       return;
