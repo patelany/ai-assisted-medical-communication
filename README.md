@@ -5,6 +5,7 @@ A full-stack clinical platform that integrates with Epic EHR via FHIR R4 to tran
 Built as an independent research project to study how AI-simplified medical communication affects family understanding and anxiety — and as a prototype for a hospital-deployable communication tool designed for all clinical staff including physicians, RNs, PAs, and NPs.
 
 **Live:** https://ai-assisted-medical-communication.vercel.app
+**Study:** https://ai-assisted-medical-communication.vercel.app/study
 
 ---
 
@@ -64,8 +65,8 @@ AI chat assistant available for follow-up questions
 ### Clinical Layer
 - **Epic FHIR R4 integration** — patient search by name or MRN, 8 parallel FHIR data pulls
 - **EHR-agnostic architecture** — built to support Epic, Cerner, athenahealth, MEDITECH via FHIR R4
-- **Patient-first workflow** — form locked until patient is confirmed in EHR
-- **Three-step patient selection** — search → results list → auto-fill or manual entry
+- **Patient-first workflow** — form locked until patient is confirmed
+- **Manual entry fallback** — title-case name formatting, MRN as identifier
 - **Edit and delete updates** — clinicians can correct mistakes after generating
 - **Two-layer HIPAA de-identification pipeline:**
   - AWS Comprehend Medical (primary — trained on clinical text)
@@ -73,43 +74,49 @@ AI chat assistant available for follow-up questions
   - Medical abbreviation whitelist (ICU, ER, INR, WBC never redacted)
 - **Visual HIPAA report** showing exactly what was redacted and why
 - Six patient status types: Stable, Improving, Delayed, Under Review, Awaiting Procedure, Critical
-- SMS consent checkbox with auto-send on generate
+- SMS consent checkbox with phone number auto-formatting
 - Update history persists across sessions via Supabase
+- Patient session persistence — refresh restores current patient
+- Clinician authentication — bcrypt passwords + WebAuthn Touch ID
 
 ### Research Layer
 - **Self-administered study** at `/study` — fully anonymous, no researcher present
+- **Email-based deduplication** — SHA-256 hash stored, not the email itself
+- **Session resumption** — participants can re-enter email to resume where they left off
 - **Latin square design** — each participant sees all 3 scenarios but only one message version per scenario, rotating across participants to eliminate order bias
+- **Two-path study flow:**
+  - Medical professionals experience the clinician view (form → HIPAA report → family viewer)
+  - Non-medical participants experience the family viewer directly
 - **AI PM research methods** — measures trust calibration, hallucination tolerance, action tendency, perceived completeness, reassurance, and AI disclosure effect
-- **Two-path study flow** — medical professionals test the clinician view, non-medical participants test the family viewer
-- **Demographics** — age range, medical background, prior hospitalization experience, communication experience
-- **Supabase database** — study responses persist permanently
+- **Step progress bar** — participants see where they are in the flow
+- **Pre-generation** — all 3 scenarios generated in parallel before study begins, eliminating mid-study loading
+- **Demographics** — age range, medical background, prior hospitalization, communication experience
+- **Supabase persistence** — study responses and sessions stored permanently
 - **Research dashboard** — bar charts comparing scores across message types
-- **Group breakdowns** — by medical background, age range, prior hospitalization
 - **CSV export** for statistical analysis
 - **WebAuthn biometric authentication** protecting the dashboard
-- **Device deduplication** — localStorage flag prevents double submission
 
 ### Family Layer
-- **6-digit access code** per patient session, persists in localStorage for 7 days
-- **Brute force protection** — 10 attempt limit, 15-minute lockout with countdown timer
+- **6-digit access code** per patient session
+- **Brute force protection** — 10 attempt limit, 15-minute lockout
 - **Split 6-digit input** — individual boxes, auto-advance, paste support
-- **Live update feed** — polls every 3 seconds, no refresh needed
-- **Dark slate Clinical Reference panel** — highlights clinical values (INR 2.8, WBC 8.2)
-- **AI chat assistant** — pulsing attention prompt, context-aware, guardrailed
+- **Live update feed** — polls every 3 seconds
+- **Dark slate Clinical Reference panel** — highlights clinical values
+- **AI chat assistant** — attention-catching prompt, context-aware, guardrailed against inappropriate content
 - **Standalone `/view` route** — families never see the clinician interface
 - Session persistence — access code remembered across visits
 
 ### Security Layer
 - Rate limiting on all API routes (in-memory, IP-based)
-- CSRF protection via origin validation on all POST routes
+- CSRF protection via origin validation
 - Input sanitization against prompt injection
-- Cryptographically secure access codes (`crypto.getRandomValues`)
+- Cryptographically secure access codes
 - 8-hour session expiry for clinician authentication
-- bcrypt password hashing (`RESEARCHER_PASSWORD_HASH`)
-- Supabase RLS enabled with service_role policies
+- bcrypt password hashing
+- Supabase RLS with service_role policies
 - Audit logging to Supabase `audit_logs` table
 - httpOnly cookies for Epic OAuth token storage
-- API keys server-side only — never exposed to the browser
+- API keys server-side only
 
 ---
 
@@ -125,9 +132,9 @@ AI chat assistant available for follow-up questions
 | AI — PHI Detection (Primary) | AWS Comprehend Medical |
 | AI — PHI Detection (Secondary) | Claude prompt-based |
 | AI — Chat Assistant | Anthropic Claude |
-| Study Database | Supabase (PostgreSQL) |
+| Database | Supabase (PostgreSQL) |
 | SMS Delivery | Twilio |
-| Authentication | WebAuthn (biometric) + bcrypt password |
+| Authentication | WebAuthn (biometric) + bcrypt |
 | Deployment | Vercel |
 
 ---
@@ -136,17 +143,9 @@ AI chat assistant available for follow-up questions
 
 ClarityAI integrates with Epic via the FHIR R4 standard using OAuth 2.0 authorization_code flow with PKCE.
 
-**Registered APIs:**
-- Patient.Read / Search (Demographics)
-- Observation.Read / Search (Labs, Vital Signs)
-- Condition.Read / Search (Encounter Diagnosis, Problems)
-- DocumentReference.Read / Search (Clinical Notes)
-- ServiceRequest.Read / Search (Orders)
-- RelatedPerson.Read / Search (Emergency contacts)
-- Encounter.Read / Search (Patient Chart)
-- MedicationRequest.Read / Search (Signed Medication Order)
+**Registered APIs:** Patient, Observation, Condition, DocumentReference, ServiceRequest, RelatedPerson, Encounter, MedicationRequest
 
-**EHR-agnostic vision:** Cerner, athenahealth, and MEDITECH integrations planned — all FHIR R4 compliant. The clinician sees a branded EHR selector (Epic in red, others coming soon) on login.
+**EHR-agnostic vision:** Cerner, athenahealth, and MEDITECH integrations planned — all FHIR R4 compliant.
 
 **Path to production:** Epic App Orchard application → first hospital pilot (free) → convert to paid.
 
@@ -156,21 +155,29 @@ ClarityAI integrates with Epic via the FHIR R4 standard using OAuth 2.0 authoriz
 
 **Access the study:** https://ai-assisted-medical-communication.vercel.app/study
 
-**Study code:** `CLARITY2026`
-
 **Design:**
 - **Independent Variable:** Message type (Raw Clinical / Hybrid / AI + Context)
-- **Dependent Variables:** Understanding (1–5), Anxiety (1–5), Trust (1–5), Reassurance (1–5), Perceived Completeness (1–5), Action Tendency (1–5)
+- **Dependent Variables:** Understanding, Anxiety, Trust, Reassurance, Perceived Completeness, Action Tendency (all 1–5)
 - **AI PM Variables:** AI disclosure effect, decision trust, trust decay response
 - **Usability Variables:** Ease of use, would want this, open feedback, comparison to current experience
 - **Design:** Latin square — within-subjects across scenarios, between-subjects across versions
+- **Two-path flow:** Medical professionals test clinician view; non-medical test family viewer
 - **Participants:** 20–30 volunteers
-- **Randomization** — scenario order and version assignment randomized per participant
 - **Label blinding** — versions shown as A/B/C, not Raw/Hybrid/Context
 - **Debrief** — AI-generated nature revealed after all ratings submitted
-- **Anonymous** — random participant IDs, no PII collected
+- **Anonymous** — random participant IDs, SHA-256 email hashes, no PII collected
 
 **All scenarios are fictional — no real patient data used at any stage.**
+
+---
+
+## Business Model
+
+**Free for families — always.**
+
+**Paid by hospitals:** $500–2,000/month per department.
+
+Families are already in crisis. Charging them to receive information about their loved one is ethically indefensible. Hospitals benefit from reduced nursing interruptions, improved patient satisfaction scores, and better family communication — quantifiable value they will pay for.
 
 ---
 
@@ -183,6 +190,7 @@ ClarityAI integrates with Epic via the FHIR R4 standard using OAuth 2.0 authoriz
 - Twilio account
 - Supabase project
 - Epic developer account (fhir.epic.com)
+- Resend account (resend.com)
 
 ### Environment Variables
 
@@ -195,14 +203,13 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
 TWILIO_MESSAGING_SERVICE_SID=
-RESEARCHER_USERNAME=
-RESEARCHER_PASSWORD_HASH=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 EPIC_CLIENT_ID=
 EPIC_CLIENT_SECRET=
 NEXT_PUBLIC_APP_URL=
+RESEND_API_KEY=
 ```
 
 ### Install and Run
@@ -220,65 +227,83 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ```
 app/
-  page.tsx                      # Main app — tabs, state, patient session
-  view/page.tsx                 # Standalone family viewer
-  study/page.tsx                # Self-administered research study
+  page.tsx                          # Main app — tabs, state, patient session
+  view/page.tsx                     # Standalone family viewer
+  study/page.tsx                    # Self-administered research study
   api/
-    generate/route.ts           # Two-layer HIPAA pipeline + Claude transformation
-    viewer/route.ts             # Supabase update storage and retrieval
-    viewer/[id]/route.ts        # Edit and delete individual updates
-    sms/route.ts                # Twilio SMS delivery
-    auth/route.ts               # Researcher credential validation
-    chat/route.ts               # AI chat assistant
-    study/route.ts              # Supabase study response storage
+    generate/route.ts               # Two-layer HIPAA pipeline + Claude transformation
+    viewer/route.ts                 # Supabase update storage and retrieval
+    viewer/[id]/route.ts            # Edit and delete individual updates
+    sms/route.ts                    # Twilio SMS delivery
+    auth/route.ts                   # Researcher credential validation
+    chat/route.ts                   # AI chat assistant
+    study/route.ts                  # Study response storage
+    study/send-code/route.ts        # Email hash + duplicate prevention
+    study/verify-code/route.ts      # Code verification
+    study/save-progress/route.ts    # Session progress persistence
+    study/get-progress/route.ts     # Session progress retrieval
     clinician/
-      register/route.ts         # Clinician account registration (bcrypt)
-      login/route.ts            # Clinician authentication
+      register/route.ts             # Clinician account registration
+      login/route.ts                # Clinician authentication
     epic/
-      connect/route.ts          # Epic OAuth2 + PKCE redirect
-      callback/route.ts         # Epic OAuth2 callback, token → httpOnly cookie
-      patient/route.ts          # Patient search + 8-parallel FHIR data fetch
+      connect/route.ts              # Epic OAuth2 + PKCE redirect
+      callback/route.ts             # Epic OAuth2 callback
+      patient/route.ts              # Patient search + FHIR data fetch
 components/
-  ClinicianPanel.tsx            # Patient-first flow: Epic search → form
-  ClinicianAuth.tsx             # WebAuthn Touch ID + email/password registration
-  EpicPatientSearch.tsx         # EHR selector + three-step patient search
-  FamilyViewer.tsx              # Family feed + brute force protection + clinical panel
-  FamilyChat.tsx                # Floating AI chat assistant with attention prompt
-  Dashboard.tsx                 # Supabase study data, bar charts, group breakdowns
-  ResearcherAuth.tsx            # Researcher dashboard authentication
-  StudyFlow.tsx                 # Full self-administered study (Latin square design)
+  ClinicianPanel.tsx                # Patient-first flow: Epic search → form
+  ClinicianAuth.tsx                 # WebAuthn Touch ID + email/password
+  EpicPatientSearch.tsx             # EHR selector + patient search
+  FamilyViewer.tsx                  # Family feed + brute force protection
+  FamilyChat.tsx                    # Floating AI chat assistant
+  Dashboard.tsx                     # Study data, bar charts, exports
+  ResearcherAuth.tsx                # Dashboard authentication
+  study/
+    StudyFlow.tsx                   # Main orchestrator — state and routing
+    StudyTypes.ts                   # Shared types and constants
+    StudyUtils.ts                   # Shuffle and ID generation
+    StudyProgressBar.tsx            # Step progress indicator
+    RatingScale.tsx                 # 1–5 rating component
+    StudyAccessCode.tsx             # Access code gate
+    StudyVerifyEmail.tsx            # Email entry and deduplication
+    StudyReturning.tsx              # Returning participant resume
+    StudyConsent.tsx                # Informed consent
+    StudyDemographics.tsx           # Participant demographics
+    StudyPreparing.tsx              # Parallel scenario pre-generation
+    ClinicianIntro.tsx              # Clinician path intro
+    ClinicianForm.tsx               # Two-panel clinician form
+    ClinicianResult.tsx             # HIPAA report + generated update
+    ClinicianRating.tsx             # Clinician experience rating
+    FamilyIntro.tsx                 # Family path intro
+    StudyFamilyViewer.tsx           # Family viewer in study context
+    FamilyRating.tsx                # Family experience rating
+    StudyScenario.tsx               # Scenario message rating
+    StudyPostScenario.tsx           # AI PM research questions
+    StudyDebrief.tsx                # Debrief + final submission
+    StudyComplete.tsx               # Thank you screen
 lib/
-  rateLimit.ts                  # In-memory IP-based rate limiter
-  csrf.ts                       # Origin validation CSRF protection
-  auditLog.ts                   # Supabase audit logging
-public/
-  epic-public-key.json          # JWK Set non-production
-  epic-public-key-prod.json     # JWK Set production
-  privacy.html                  # Privacy policy (Twilio compliance)
-  terms.html                    # Terms of service (Twilio compliance)
+  rateLimit.ts                      # In-memory IP-based rate limiter
+  csrf.ts                           # Origin validation CSRF protection
+  auditLog.ts                       # Supabase audit logging
 ```
 
 ---
 
 ## Security & Ethics
 
-**De-identification:** All clinical input passes through a two-layer PHI detection pipeline before message transformation. AWS Comprehend Medical handles primary detection. Claude performs a secondary pass for relative dates and implicit identifiers. A medical abbreviation whitelist prevents false positives on terms like ICU, ER, INR, and WBC.
+**De-identification:** All clinical input passes through a two-layer PHI detection pipeline. AWS Comprehend Medical handles primary detection. Claude performs a secondary pass. A medical abbreviation whitelist prevents false positives.
 
 **Research ethics:**
 - All scenarios are fictional — no real patient data used
 - Participants informed of AI-generated nature after rating (debrief)
-- No PII collected — random participant IDs only
-- Data stored in Supabase, exportable as anonymous CSV
-- Device-level deduplication prevents double submission
+- No PII collected — random participant IDs, SHA-256 email hashes only
+- Device-level and server-level deduplication prevents double submission
 
-**AI guardrails:** The family chat assistant is explicitly instructed to never provide medical advice, never assess severity, and always redirect clinical questions to the care team.
-
-**Authentication:** Clinician accounts stored in Supabase with bcrypt-hashed passwords. Dashboard protected by WebAuthn biometric authentication. Biometric data never leaves the device — authentication uses a challenge-response cryptographic protocol via the device's Secure Enclave.
+**AI guardrails:** The family chat assistant is explicitly instructed to never provide medical advice, never assess severity, block off-topic questions, and redirect clinical questions to the care team.
 
 **Limitations:**
 - Epic integration currently in sandbox — production requires App Orchard approval
 - Study sample size of 20–30 limits statistical generalizability
-- In-memory rate limiting resets on server restart — production would use Redis
+- In-memory rate limiting resets on server restart
 
 ---
 
@@ -287,12 +312,11 @@ public/
 - Epic App Orchard approval for hospital deployment
 - SMART on FHIR launch handler for embedded Epic workflow
 - Cerner, athenahealth, MEDITECH OAuth integrations
-- Patient session persistence (one permanent code per patient)
-- Phone verification for study participants (Twilio)
 - Social health journey feed — private post-discharge updates for ongoing treatment
 - Stripe payments for hospital subscription billing
 - IRB approval for formal clinical research publication
 - Multi-department support with role-based access
+- Redis-based rate limiting for production scale
 
 ---
 

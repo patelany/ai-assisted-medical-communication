@@ -101,7 +101,7 @@ export default function ClinicianForm({
             <textarea
               value={clinicianAction}
               onChange={(e) => setClinicianAction(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-300 transition-colors min-h-24"
+              className="w-full bg-white border border-gray-100 rounded-lg p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-300 transition-colors min-h-24"
             />
           </div>
 
@@ -123,7 +123,7 @@ export default function ClinicianForm({
             <textarea
               value={clinicianReason}
               onChange={(e) => setClinicianReason(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-300 transition-colors min-h-24"
+              className="w-full bg-white border border-gray-100 rounded-lg p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-300 transition-colors min-h-24"
             />
           </div>
 

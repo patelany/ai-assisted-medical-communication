@@ -92,7 +92,7 @@ export default function ClinicianRating({
               value={clinicianHipaaInteresting}
               onChange={(e) => setClinicianHipaaInteresting(e.target.value)}
               placeholder="Was it useful? Accurate? Surprising?"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-20"
+              className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-20"
             />
           </div>
 
@@ -104,7 +104,7 @@ export default function ClinicianRating({
               value={clinicianFeedback}
               onChange={(e) => setClinicianFeedback(e.target.value)}
               placeholder="What worked well? What would you change?"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-20"
+              className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-20"
             />
           </div>
 

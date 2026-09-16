@@ -197,7 +197,7 @@ export default function StudyScenario({
                   placeholder="What did you understand? What was unclear?"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-16"
+                  className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm text-gray-900 resize-none focus:outline-none focus:border-gray-400 transition-colors min-h-16"
                 />
               </div>
             </div>

@@ -429,6 +429,9 @@ export default function FamilyViewer({ correctCode }: FamilyViewerProps) {
                       {u.time} today
                     </span>
                   </div>
+                  <p className="text-xs text-gray-400 mb-3">
+                    From your care team · simplified for clarity by ClarityAI
+                  </p>
                   <p className="text-sm leading-relaxed text-gray-800">
                     {u.msg}
                   </p>
