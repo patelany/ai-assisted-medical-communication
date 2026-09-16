@@ -150,57 +150,84 @@ export default function Dashboard() {
   }, []);
 
   const exportCSV = () => {
-    const rows = [
-      [
-        "Participant ID",
-        "Age Range",
-        "Medical Background",
-        "Prior Hospitalization",
-        "Scenario",
-        "Message Order",
-        "Raw Understanding",
-        "Raw Anxiety",
-        "Raw Notes",
-        "Hybrid Understanding",
-        "Hybrid Anxiety",
-        "Hybrid Notes",
-        "Context Understanding",
-        "Context Anxiety",
-        "Context Notes",
-        "Debrief Reaction",
-        "Submitted At",
-      ],
+    const headers = [
+      "Participant ID",
+      "Age Range",
+      "Medical Background",
+      "Prior Hospitalization",
+      "Communicated Updates",
+      "Path",
+      "Scenario ID",
+      "Version",
+      "Understanding",
+      "Anxiety",
+      "Trust",
+      "Reassurance",
+      "Perceived Completeness",
+      "Action Tendency",
+      "Notes",
+      "AI Disclosure Effect",
+      "Decision Trust",
+      "Trust Decay Response",
+      "Would Want This",
+      "Ease of Use",
+      "Open Feedback",
+      "Compare To Now",
+      "Clinician Ease of Use",
+      "Clinician Would Use",
+      "Clinician Feedback",
+      "Clinician HIPAA Interesting",
+      "Family Ease of Use",
+      "Family Would Want",
+      "Family Feedback",
+      "Family Compare To Now",
+      "Debrief Reaction",
+      "Submitted At",
     ];
 
-    responses.forEach((r) => {
-      rows.push([
-        r.participant_id || "",
-        r.age_range || "",
-        r.medical_background || "",
-        r.prior_hospitalization || "",
-        r.scenario_id || "",
-        (r.message_order || []).join(" → "),
-        String(r.raw_understanding || ""),
-        String(r.raw_anxiety || ""),
-        (r.raw_notes || "").replace(/,/g, ";"),
-        String(r.hybrid_understanding || ""),
-        String(r.hybrid_anxiety || ""),
-        (r.hybrid_notes || "").replace(/,/g, ";"),
-        String(r.context_understanding || ""),
-        String(r.context_anxiety || ""),
-        (r.context_notes || "").replace(/,/g, ";"),
-        (r.debrief_reaction || "").replace(/,/g, ";"),
-        r.submitted_at || "",
-      ]);
-    });
+    const rows = responses.map((r: any) => [
+      r.participant_id || "",
+      r.age_range || "",
+      r.medical_background || "",
+      r.prior_hospitalization || "",
+      r.communicated_updates || "",
+      r.path || "",
+      r.scenario_id || "",
+      r.version || "",
+      r.understanding || "",
+      r.anxiety || "",
+      r.trust || "",
+      r.reassurance || "",
+      r.perceived_completeness || "",
+      r.action_tendency || "",
+      r.notes || "",
+      r.ai_disclosure_effect || "",
+      r.decision_trust || "",
+      r.trust_decay_response || "",
+      r.would_want_this || "",
+      r.ease_of_use || "",
+      r.open_feedback || "",
+      r.compare_to_now || "",
+      r.clinician_ease_of_use || "",
+      r.clinician_would_use || "",
+      r.clinician_feedback || "",
+      r.clinician_hipaa_interesting || "",
+      r.family_ease_of_use || "",
+      r.family_would_want || "",
+      r.family_feedback || "",
+      r.family_compare_to_now || "",
+      r.debrief_reaction || "",
+      r.submitted_at || "",
+    ]);
 
-    const csv = rows.map((r) => r.join(",")).join("\n");
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "clarityai_study_data.csv";
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
